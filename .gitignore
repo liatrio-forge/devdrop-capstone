@@ -1,0 +1,15 @@
+.DS_Store
+
+# Build outputs
+bin/
+dist/
+coverage/
+
+# Go
+*.test
+*.out
+
+# Local devdrop test/state data
+.devdrop/
+.tmp/
+

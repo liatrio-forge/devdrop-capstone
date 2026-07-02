@@ -23,19 +23,28 @@ func migrateLegacyHome() error {
 	}
 	newPath := filepath.Join(home, appDirName)
 	oldPath := filepath.Join(home, legacyAppDirName)
-	if exists(newPath) || !exists(oldPath) {
+	newExists := exists(newPath)
+	oldExists := exists(oldPath)
+	// Already migrated. If the old dir is gone, a prior run may have renamed
+	// the home but failed before (or during) the config rewrite; re-run the
+	// rewrite so the migration self-heals instead of leaving config.json
+	// pointing inside the old directory. rewriteMigratedConfigPaths is
+	// idempotent (a no-op once the stored paths are already correct).
+	if newExists {
+		if !oldExists {
+			if err := rewriteMigratedConfigPaths(oldPath, newPath); err != nil {
+				return fmt.Errorf("repair config paths for migrated home %s: %w", newPath, err)
+			}
+		}
+		return nil
+	}
+	if !oldExists {
 		return nil
 	}
 	if err := os.Rename(oldPath, newPath); err != nil {
 		return fmt.Errorf("migrate %s to %s: %w", oldPath, newPath, err)
 	}
 	if err := rewriteMigratedConfigPaths(oldPath, newPath); err != nil {
-		// Roll the rename back so the migration retries cleanly on the next
-		// run instead of stranding a moved-but-unrepaired home whose
-		// config.json still points inside the old directory.
-		if rbErr := os.Rename(newPath, oldPath); rbErr != nil {
-			return fmt.Errorf("rewrite config paths after migrating %s to %s failed (%w); rollback also failed (%v) — ~/.devspace may be inconsistent", oldPath, newPath, err, rbErr)
-		}
 		return fmt.Errorf("rewrite config paths after migrating %s to %s: %w", oldPath, newPath, err)
 	}
 	fmt.Fprintln(os.Stderr, "devspace: migrated ~/.devdrop -> ~/.devspace")

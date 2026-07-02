@@ -39,6 +39,35 @@ func TestMigrateLegacyHomeFreshInstallNoOp(t *testing.T) {
 	}
 }
 
+func TestMigrateLegacyHomeRepairsUnrewrittenConfig(t *testing.T) {
+	home := withFakeHome(t)
+	newPath := filepath.Join(home, appDirName)
+	oldPath := filepath.Join(home, legacyAppDirName)
+	oldIdentity := filepath.Join(oldPath, "identity.txt")
+	// Simulate a prior run that renamed the home to .devspace but failed
+	// before rewriting config.json: the new dir exists, the old dir is gone,
+	// but the stored identity path still points inside the old directory.
+	if err := SaveConfig(Config{MachineID: "machine_1", AgeIdentityPath: oldIdentity}); err != nil {
+		t.Fatalf("SaveConfig: %v", err)
+	}
+	if !exists(newPath) {
+		t.Fatal("precondition: new home should exist after SaveConfig")
+	}
+
+	if err := migrateLegacyHome(); err != nil {
+		t.Fatalf("migrateLegacyHome returned error: %v", err)
+	}
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	want := filepath.Join(newPath, "identity.txt")
+	if cfg.AgeIdentityPath != want {
+		t.Fatalf("AgeIdentityPath = %q, want %q (config should self-heal)", cfg.AgeIdentityPath, want)
+	}
+}
+
 func TestMigrateLegacyHomeMovesLegacyDirectory(t *testing.T) {
 	home := withFakeHome(t)
 	oldPath := filepath.Join(home, legacyAppDirName)

@@ -432,6 +432,13 @@ type HostedSyncServerOptions struct {
 	RateBurst int
 	// MaxLimiters bounds the number of tracked per-IP limiters (0 = default).
 	MaxLimiters int
+	// TrustedProxies is the set of CIDR ranges the server is willing to trust
+	// for X-Forwarded-For client identification. When the immediate TCP peer
+	// matches one of these, the rightmost (leftmost-in-chain) untrusted XFF
+	// entry is used as the rate-limit key; otherwise the peer IP is used.
+	// Empty (the default) means no proxy is trusted and the peer IP is always
+	// used — the safe choice when the server is reached directly.
+	TrustedProxies []*net.IPNet
 }
 
 func NewHostedSyncServer(opts HostedSyncServerOptions) (http.Handler, error) {
@@ -463,13 +470,14 @@ func NewHostedSyncServer(opts HostedSyncServerOptions) (http.Handler, error) {
 		maxLimiters = defaultHostedSyncMaxLimiters
 	}
 	return &hostedSyncServer{
-		storeDir:     storeDir,
-		token:        token,
-		workspaceMus: map[string]*sync.Mutex{},
-		limiters:     map[string]*hostedIPLimiter{},
-		rateLimit:    rateLimit,
-		rateBurst:    rateBurst,
-		maxLimiters:  maxLimiters,
+		storeDir:       storeDir,
+		token:          token,
+		workspaceMus:   map[string]*sync.Mutex{},
+		limiters:       map[string]*hostedIPLimiter{},
+		rateLimit:      rateLimit,
+		rateBurst:      rateBurst,
+		maxLimiters:    maxLimiters,
+		trustedProxies: opts.TrustedProxies,
 	}, nil
 }
 
@@ -480,11 +488,12 @@ type hostedSyncServer struct {
 	mu           sync.Mutex
 	workspaceMus map[string]*sync.Mutex
 
-	limiterMu   sync.Mutex
-	limiters    map[string]*hostedIPLimiter
-	rateLimit   rate.Limit
-	rateBurst   int
-	maxLimiters int
+	limiterMu      sync.Mutex
+	limiters       map[string]*hostedIPLimiter
+	rateLimit      rate.Limit
+	rateBurst      int
+	maxLimiters    int
+	trustedProxies []*net.IPNet
 }
 
 // hostedIPLimiter is a per-client rate limiter plus the last time it was used,
@@ -507,10 +516,12 @@ func (s *hostedSyncServer) workspaceMutex(workspace string) *sync.Mutex {
 	return m
 }
 
-// allowRequest reports whether the client identified by r.RemoteAddr is
-// within its rate limit, lazily creating a per-client token-bucket limiter.
+// allowRequest reports whether the identified client is within its rate
+// limit, lazily creating a per-client token-bucket limiter. Client identity
+// comes from clientIP, which honors X-Forwarded-For when the immediate peer
+// is a configured trusted proxy.
 func (s *hostedSyncServer) allowRequest(r *http.Request) bool {
-	ip := hostedClientIP(r.RemoteAddr)
+	ip := s.clientIP(r)
 	now := time.Now()
 	s.limiterMu.Lock()
 	entry, ok := s.limiters[ip]
@@ -551,6 +562,104 @@ func hostedClientIP(remoteAddr string) string {
 		return remoteAddr
 	}
 	return host
+}
+
+// clientIP resolves the rate-limit key for r. When the immediate TCP peer is
+// a configured trusted proxy, the rightmost (leftmost-in-chain) untrusted
+// entry of X-Forwarded-For is used; otherwise the peer IP is used directly.
+// This keeps rate limiting meaningful behind a proxy (Railway, Fly, nginx),
+// where every connection's RemoteAddr is the proxy and an untrusted XFF
+// header would otherwise let a single client spoof an unbounded number of
+// distinct limiter keys.
+func (s *hostedSyncServer) clientIP(r *http.Request) string {
+	peer := hostedClientIP(r.RemoteAddr)
+	if len(s.trustedProxies) == 0 {
+		return peer
+	}
+	if !ipInAnyCIDR(peer, s.trustedProxies) {
+		return peer
+	}
+	// Peer is trusted: walk X-Forwarded-For right-to-left, skipping any hop
+	// that is itself a trusted proxy. The first untrusted address is the
+	// originating client as far back as this server can verify. If every hop
+	// is trusted, fall back to the leftmost entry.
+	xff := r.Header.Get("X-Forwarded-For")
+	hops := splitForwarded(xff)
+	for i := len(hops) - 1; i >= 0; i-- {
+		hop := hops[i]
+		if hop == "" {
+			continue
+		}
+		if !ipInAnyCIDR(hop, s.trustedProxies) {
+			return hop
+		}
+	}
+	if len(hops) > 0 {
+		// All listed hops are trusted proxies; use the original (leftmost).
+		for _, hop := range hops {
+			if hop != "" {
+				return hop
+			}
+		}
+	}
+	return peer
+}
+
+// splitForwarded parses an X-Forwarded-For header into its comma-separated
+// client entries, trimmed and de-blanked, in the order they appear (leftmost
+// client first). It performs no validation beyond trimming.
+func splitForwarded(header string) []string {
+	if header == "" {
+		return nil
+	}
+	parts := strings.Split(header, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		out = append(out, strings.TrimSpace(p))
+	}
+	return out
+}
+
+// ipInAnyCIDR reports whether addr (an IP literal) is contained in any of the
+// given CIDR ranges. Non-IP literals return false.
+func ipInAnyCIDR(addr string, cidrs []*net.IPNet) bool {
+	ip := net.ParseIP(addr)
+	if ip == nil {
+		return false
+	}
+	for _, c := range cidrs {
+		if c.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// parseTrustedProxyCIDRs parses a list of CIDR strings (e.g. "10.0.0.0/8",
+// "::1/128") into net.IPNet values. A bare IP is treated as a /32 or /128.
+func parseTrustedProxyCIDRs(values []string) ([]*net.IPNet, error) {
+	var out []*net.IPNet
+	for _, v := range values {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		_, ipnet, err := net.ParseCIDR(v)
+		if err != nil {
+			// Allow a bare IP: treat as a single-host network.
+			ip := net.ParseIP(v)
+			if ip == nil {
+				return nil, fmt.Errorf("invalid trusted-proxy CIDR or IP %q", v)
+			}
+			if ip.To4() != nil {
+				ipnet = &net.IPNet{IP: ip.To4(), Mask: net.CIDRMask(32, 32)}
+			} else {
+				ipnet = &net.IPNet{IP: ip, Mask: net.CIDRMask(128, 128)}
+			}
+		}
+		out = append(out, ipnet)
+	}
+	return out, nil
 }
 
 func (s *hostedSyncServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {

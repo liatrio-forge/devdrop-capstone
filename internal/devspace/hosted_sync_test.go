@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -56,6 +57,118 @@ func TestHostedServerRateLimiterMapIsBounded(t *testing.T) {
 	s.limiterMu.Unlock()
 	if n > 8 {
 		t.Fatalf("per-IP limiter map grew past cap: %d entries (max 8)", n)
+	}
+}
+
+func TestHostedServerClientIPRespectsTrustedXFF(t *testing.T) {
+	_, trusted, err := net.ParseCIDR("10.0.0.0/8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewHostedSyncServer(HostedSyncServerOptions{
+		StoreDir:       t.TempDir(),
+		Token:          "test-token",
+		TrustedProxies: []*net.IPNet{trusted},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := handler.(*hostedSyncServer)
+
+	// Proxy peer (10.x) carries XFF naming three distinct clients; the
+	// rightmost untrusted entry is the real client and should key the limiter.
+	for _, client := range []string{"198.51.100.1", "198.51.100.2", "198.51.100.3"} {
+		r := httptest.NewRequest(http.MethodGet, "/v1/workspaces/x/manifest", nil)
+		r.RemoteAddr = "10.1.2.3:9999"
+		r.Header.Set("X-Forwarded-For", client)
+		s.allowRequest(r)
+	}
+	s.limiterMu.Lock()
+	n := len(s.limiters)
+	s.limiterMu.Unlock()
+	if n != 3 {
+		t.Fatalf("expected 3 distinct client-IP limiters via trusted XFF, got %d", n)
+	}
+}
+
+func TestHostedServerClientIPIgnoresUntrustedXFF(t *testing.T) {
+	// No trusted proxies configured: XFF must be ignored entirely and every
+	// request keyed on the peer IP, so spoofed XFF values cannot inflate the
+	// limiter map.
+	handler, err := NewHostedSyncServer(HostedSyncServerOptions{StoreDir: t.TempDir(), Token: "test-token"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := handler.(*hostedSyncServer)
+	for i := 0; i < 20; i++ {
+		r := httptest.NewRequest(http.MethodGet, "/v1/workspaces/x/manifest", nil)
+		r.RemoteAddr = "203.0.113.7:9999"
+		r.Header.Set("X-Forwarded-For", "198.51.100."+strconv.Itoa(i))
+		s.allowRequest(r)
+	}
+	s.limiterMu.Lock()
+	n := len(s.limiters)
+	s.limiterMu.Unlock()
+	if n != 1 {
+		t.Fatalf("untrusted XFF must not create distinct limiters: got %d, want 1", n)
+	}
+}
+
+func TestHostedServerClientIPWalksPastTrustedHops(t *testing.T) {
+	// Chain: client 198.51.100.9 -> trusted proxy 10.0.0.1 -> trusted proxy
+	// 10.0.0.2 -> this server. XFF lists both proxies; the server must walk
+	// past the trusted hops to the untrusted originating client.
+	_, trusted, err := net.ParseCIDR("10.0.0.0/8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewHostedSyncServer(HostedSyncServerOptions{
+		StoreDir:       t.TempDir(),
+		Token:          "test-token",
+		TrustedProxies: []*net.IPNet{trusted},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := handler.(*hostedSyncServer)
+	r := httptest.NewRequest(http.MethodGet, "/v1/workspaces/x/manifest", nil)
+	r.RemoteAddr = "10.0.0.2:9999"
+	r.Header.Set("X-Forwarded-For", "198.51.100.9, 10.0.0.1")
+	s.allowRequest(r)
+	s.limiterMu.Lock()
+	defer s.limiterMu.Unlock()
+	_, ok := s.limiters["198.51.100.9"]
+	if !ok {
+		t.Fatalf("expected limiter keyed on originating client 198.51.100.9; have keys %v", limiterKeysLocked(s))
+	}
+}
+
+func limiterKeysLocked(s *hostedSyncServer) []string {
+	keys := make([]string, 0, len(s.limiters))
+	for k := range s.limiters {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func TestParseTrustedProxyCIDRs(t *testing.T) {
+	cidrs, err := parseTrustedProxyCIDRs([]string{"10.0.0.0/8", "  192.168.1.5 ", "", "fe80::/64"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cidrs) != 3 {
+		t.Fatalf("expected 3 CIDRs (blank ignored), got %d", len(cidrs))
+	}
+	// A bare IP becomes a single-host network.
+	bare, err := parseTrustedProxyCIDRs([]string{"203.0.113.42"})
+	if err != nil {
+		t.Fatalf("bare IP parse error: %v", err)
+	}
+	if !bare[0].IP.Equal(net.ParseIP("203.0.113.42").To4()) {
+		t.Fatalf("bare IP not normalized: %v", bare[0].IP)
+	}
+	if _, err := parseTrustedProxyCIDRs([]string{"not-a-cidr"}); err == nil {
+		t.Fatal("expected error for invalid CIDR/IP")
 	}
 }
 

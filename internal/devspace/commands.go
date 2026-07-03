@@ -202,6 +202,7 @@ func newHostedServeCommand() *cobra.Command {
 	var addr string
 	var store string
 	var token string
+	var trustedProxies []string
 	cmd := &cobra.Command{
 		Use:   "serve",
 		Short: "Run a local hosted manifest sync prototype server",
@@ -222,7 +223,15 @@ func newHostedServeCommand() *cobra.Command {
 				}
 				store = filepath.Join(home, "hosted-control-plane")
 			}
-			handler, err := NewHostedSyncServer(HostedSyncServerOptions{StoreDir: store, Token: token})
+			proxyCIDRs, err := parseTrustedProxyCIDRs(trustedProxies)
+			if err != nil {
+				return err
+			}
+			handler, err := NewHostedSyncServer(HostedSyncServerOptions{
+				StoreDir:       store,
+				Token:          token,
+				TrustedProxies: proxyCIDRs,
+			})
 			if err != nil {
 				return err
 			}
@@ -265,6 +274,7 @@ func newHostedServeCommand() *cobra.Command {
 	cmd.Flags().StringVar(&addr, "addr", "127.0.0.1:8787", "listen address")
 	cmd.Flags().StringVar(&store, "store", "", "directory for hosted manifest storage")
 	cmd.Flags().StringVar(&token, "token", "", "required bearer token")
+	cmd.Flags().StringSliceVar(&trustedProxies, "trusted-proxy", nil, "trusted proxy CIDR (repeatable); enables X-Forwarded-For client identification for rate limiting")
 	return cmd
 }
 

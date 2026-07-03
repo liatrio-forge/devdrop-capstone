@@ -229,7 +229,7 @@ Compatibility alias. Prefer `devspace plan` and `devspace apply`.
 ```bash
 devspace workspace remote set <git-url-or-local-path>
 devspace workspace remote create local ~/Projects/devspace-manifest.git
-devspace workspace remote create github HexSleeves/devspace-manifest --private
+devspace workspace remote create github your-org/devspace-manifest --private
 devspace workspace remote get
 ```
 

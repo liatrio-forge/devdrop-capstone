@@ -114,7 +114,7 @@ func MountWorkspace(ctx context.Context, mountpoint string, opts WorkspaceMountO
 	select {
 	case <-ctx.Done():
 		if err := server.Unmount(); err != nil {
-			fmt.Fprintf(out, "warning: unmount failed: %v\n", err)
+			fmt.Fprintf(opts.ErrOut, "warning: unmount failed: %v\n", err)
 		}
 		<-done
 		return nil

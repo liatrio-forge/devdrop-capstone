@@ -59,7 +59,7 @@ func TestWorkspaceRemoteCreateGitHubRequiresGh(t *testing.T) {
 	hardeningInitWorkspace(t, "code")
 	t.Setenv("PATH", t.TempDir())
 
-	_, err := CreateGitHubManifestRemote("HexSleeves/devspace-manifest", true)
+	_, err := CreateGitHubManifestRemote("your-org/devspace-manifest", true)
 	if err == nil || !strings.Contains(err.Error(), "requires GitHub CLI") {
 		t.Fatalf("github create error = %v", err)
 	}
@@ -67,13 +67,13 @@ func TestWorkspaceRemoteCreateGitHubRequiresGh(t *testing.T) {
 
 func TestManifestRemoteNotReadyErrorGivesCreateCommands(t *testing.T) {
 	err := manifestRemoteNotReadyError(
-		"git@github.com:HexSleeves/devspace-manifest.git",
+		"git@github.com:your-org/devspace-manifest.git",
 		errors.New("ERROR: Repository not found."),
 	)
 	if err == nil || !strings.Contains(err.Error(), "manifest remote is not ready") {
 		t.Fatalf("remote not ready error = %v", err)
 	}
-	if !strings.Contains(err.Error(), "devspace workspace remote create github HexSleeves/devspace-manifest --private") {
+	if !strings.Contains(err.Error(), "devspace workspace remote create github your-org/devspace-manifest --private") {
 		t.Fatalf("missing github recovery command:\n%v", err)
 	}
 	if !strings.Contains(err.Error(), "devspace workspace remote create local ~/Projects/devspace-manifest.git") {
@@ -188,10 +188,13 @@ func TestWorkspacePushUsesConfiguredCommitIdentity(t *testing.T) {
 }
 
 func TestWorkspacePushFallsBackToDefaultCommitIdentity(t *testing.T) {
-	// Isolate git from the developer's real global config so the "no identity
-	// configured" fallback path is actually exercised.
+	// Isolate git from the developer's real global AND system config so the
+	// "no identity configured" fallback path is actually exercised.
+	// GIT_CONFIG_GLOBAL alone only skips ~/.gitconfig; a machine-level system
+	// gitconfig would still leak through and make this assertion flaky.
 	globalCfg := filepath.Join(t.TempDir(), "git-config")
 	t.Setenv("GIT_CONFIG_GLOBAL", globalCfg)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 
 	workspace := hardeningInitWorkspace(t, "code")
 	remote := workspaceSyncBareRepo(t)

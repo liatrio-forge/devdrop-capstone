@@ -425,13 +425,15 @@ func newWorkspaceRemoteCommand() *cobra.Command {
 				return err
 			}
 			if cmd.Flags().Changed("commit-email") || cmd.Flags().Changed("commit-name") {
-				commitEmail = strings.TrimSpace(commitEmail)
-				commitName = strings.TrimSpace(commitName)
-				if commitEmail != "" {
-					cfg.ManifestCommitEmail = commitEmail
+				// Each field is gated on its own flag being passed, not on
+				// the trimmed value being non-empty, so `--commit-email ""`
+				// explicitly clears it back to the default fallback instead
+				// of being a silent no-op.
+				if cmd.Flags().Changed("commit-email") {
+					cfg.ManifestCommitEmail = strings.TrimSpace(commitEmail)
 				}
-				if commitName != "" {
-					cfg.ManifestCommitName = commitName
+				if cmd.Flags().Changed("commit-name") {
+					cfg.ManifestCommitName = strings.TrimSpace(commitName)
 				}
 				cfg.UpdatedAt = nowRFC3339()
 				if err := SaveConfig(cfg); err != nil {

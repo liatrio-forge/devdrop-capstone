@@ -102,7 +102,7 @@ func CreateLocalManifestRemote(path string) (Config, error) {
 func CreateGitHubManifestRemote(repo string, private bool) (Config, error) {
 	repo = strings.TrimSpace(repo)
 	if repo == "" {
-		return Config{}, fmt.Errorf("GitHub repository is required, for example HexSleeves/devspace-manifest")
+		return Config{}, fmt.Errorf("GitHub repository is required, for example your-org/devspace-manifest")
 	}
 	if strings.Count(repo, "/") != 1 {
 		return Config{}, fmt.Errorf("GitHub repository must be owner/name, got %q", repo)

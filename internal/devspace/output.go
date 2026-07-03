@@ -8,11 +8,12 @@ import (
 	"strings"
 )
 
-// This file holds the pure presentation/formatting helpers used by the cobra
-// command RunE handlers. They take an io.Writer and a domain value and write
-// human-readable output; none of them touch the filesystem, the config, or
-// global state, which keeps them easy to unit-test (see commands_test.go).
-// Command construction and flag wiring remain in commands.go.
+// This file holds the presentation/formatting helpers used by the cobra
+// command RunE handlers. Most take an io.Writer and a domain value and write
+// human-readable output with no side effects, which keeps them easy to unit
+// test (see commands_test.go); printStatus is the exception -- it loads
+// config/manifest/state to assemble the view it prints. Command construction
+// and flag wiring remain in commands.go.
 
 func profileOrDefault(profile string) string {
 	if profile == "" {

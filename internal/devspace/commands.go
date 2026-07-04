@@ -508,7 +508,12 @@ func newScanCommand() *cobra.Command {
 		Short: "Scan workspace projects",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return withAppLock(func() error {
-				s, err := ScanWorkspace()
+				var s ScanSummary
+				err := runWithSpinner(cmd.OutOrStdout(), "Scanning workspace", func() error {
+					var scanErr error
+					s, scanErr = ScanWorkspace()
+					return scanErr
+				})
 				if err != nil {
 					return err
 				}
@@ -633,7 +638,12 @@ func newProjectCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return withAppLock(func() error {
-				p, err := HydrateProject(args[0])
+				var p Project
+				err := runWithSpinner(cmd.OutOrStdout(), fmt.Sprintf("Hydrating %s", args[0]), func() error {
+					var hydrateErr error
+					p, hydrateErr = HydrateProject(args[0])
+					return hydrateErr
+				})
 				if err != nil {
 					return err
 				}
@@ -958,7 +968,7 @@ func newSetupRunCommand() *cobra.Command {
 				return err
 			}
 			if !dryRun && !yes {
-				if err := confirmSetup(cmd.InOrStdin(), cmd.ErrOrStderr(), fmt.Sprintf("Type %s to run `%s` in %s: ", result.Project, result.Command, result.Path), result.Project); err != nil {
+				if err := confirmSetupRun(cmd.InOrStdin(), cmd.ErrOrStderr(), result.Project, result.Command, result.Path); err != nil {
 					return err
 				}
 			}
@@ -1004,7 +1014,7 @@ func newSetupApplyCommand() *cobra.Command {
 				return nil
 			}
 			if !dryRun && !yes {
-				if err := confirmSetup(cmd.InOrStdin(), cmd.ErrOrStderr(), "Type run all to run install commands for every runnable project: ", "run all"); err != nil {
+				if err := confirmSetupApply(cmd.InOrStdin(), cmd.ErrOrStderr(), "Type run all to run install commands for every runnable project: ", "run all"); err != nil {
 					return err
 				}
 			}

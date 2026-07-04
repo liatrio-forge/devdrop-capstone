@@ -196,7 +196,7 @@
       </div>
     </section>
 
-    <section class="parent-task" data-task-id="5.0" data-status="pending">
+    <section class="parent-task" data-task-id="5.0" data-status="done">
       <h3>5.0 Interactive prompts and progress</h3>
       <p>Replace <code>confirmSetup</code> with <code>huh/v2</code> forms preserving safety semantics (<code>setup run</code>: Confirm defaulting to No; <code>setup apply</code>: typed-phrase Input validation), keep the <code>--yes</code> bypass and byte-for-byte <code>bufio</code> fallback when stdin/stdout is not a TTY, add a <code>bubbles/v2</code> spinner for <code>project hydrate</code> and <code>scan</code> on TTY (plain start/finish lines otherwise), and leave <code>secretInput</code>'s <code>x/term.ReadPassword</code> path untouched.</p>
       <div class="proof-artifacts">
@@ -211,13 +211,13 @@
       <div class="subtasks">
         <h4>5.0 Tasks</h4>
         <ul class="task-list">
-          <li class="task" data-task-id="5.1" data-status="pending"><span class="task-label">5.1 Implement a huh Confirm prompt (default No) for <code>setup run</code>, used only when stdin and stdout are both TTYs.</span></li>
-          <li class="task" data-task-id="5.2" data-status="pending"><span class="task-label">5.2 Implement a huh Input prompt for <code>setup apply</code> whose validation requires the exact current confirmation phrase, preserving the typed-phrase safety gate.</span></li>
-          <li class="task" data-task-id="5.3" data-status="pending"><span class="task-label">5.3 Preserve <code>--yes</code> as the only bypass and keep the existing <code>confirmSetup</code> bufio path as the non-TTY fallback with byte-for-byte identical prompt text and matching rules.</span></li>
-          <li class="task" data-task-id="5.4" data-status="pending"><span class="task-label">5.4 Add a spinner helper (<code>bubbles/v2</code> spinner in a minimal bubbletea program) shown during <code>project hydrate</code> clone and <code>scan</code> on TTY; non-TTY path prints plain start/finish lines through <code>output.go</code>.</span></li>
-          <li class="task" data-task-id="5.5" data-status="pending"><span class="task-label">5.5 Tests: piped-stdin fallback for <code>setup run</code>/<code>setup apply</code> (including wrong-phrase rejection), typed-phrase validation unit test, spinner-off plain start/finish lines against buffers, and existing secret-entry tests passing unmodified.</span></li>
-          <li class="task" data-task-id="5.6" data-status="pending"><span class="task-label">5.6 Record vhs tapes for the <code>setup run</code> confirmation and <code>hydrate</code> spinner; save tapes + GIFs under <code>04-proofs/</code>.</span></li>
-          <li class="task" data-task-id="5.7" data-status="pending"><span class="task-label">5.7 Add automated TTY-path tests for the interactive surfaces (audit remediation for the TTY-rendering flag): drive the <code>setup run</code> huh Confirm with scripted input via huh's <code>WithInput</code>/<code>WithOutput</code> options, and drive the hydrate/scan spinner program with <code>github.com/charmbracelet/x/exp/teatest/v2</code> (test-only dependency), asserting spinner frames render and the completion line appears.</span></li>
+          <li class="task" data-task-id="5.1" data-status="done"><span class="task-label">5.1 Implement a huh Confirm prompt (default No) for <code>setup run</code>, used only when stdin and stdout are both TTYs.</span></li>
+          <li class="task" data-task-id="5.2" data-status="done"><span class="task-label">5.2 Implement a huh Input prompt for <code>setup apply</code> whose validation requires the exact current confirmation phrase, preserving the typed-phrase safety gate.</span></li>
+          <li class="task" data-task-id="5.3" data-status="done"><span class="task-label">5.3 Preserve <code>--yes</code> as the only bypass and keep the existing <code>confirmSetup</code> bufio path as the non-TTY fallback with byte-for-byte identical prompt text and matching rules.</span></li>
+          <li class="task" data-task-id="5.4" data-status="done"><span class="task-label">5.4 Add a spinner helper (<code>bubbles/v2</code> spinner in a minimal bubbletea program) shown during <code>project hydrate</code> clone and <code>scan</code> on TTY; non-TTY path prints plain start/finish lines through <code>output.go</code>.</span></li>
+          <li class="task" data-task-id="5.5" data-status="done"><span class="task-label">5.5 Tests: piped-stdin fallback for <code>setup run</code>/<code>setup apply</code> (including wrong-phrase rejection), typed-phrase validation unit test, spinner-off plain start/finish lines against buffers, and existing secret-entry tests passing unmodified.</span></li>
+          <li class="task" data-task-id="5.6" data-status="done"><span class="task-label">5.6 Record vhs tapes for the <code>setup run</code> confirmation and <code>hydrate</code> spinner; save tapes + GIFs under <code>04-proofs/</code>.</span></li>
+          <li class="task" data-task-id="5.7" data-status="done"><span class="task-label">5.7 Add automated TTY-path tests for the interactive surfaces (audit remediation for the TTY-rendering flag): drive the <code>setup run</code> huh Confirm with scripted input via huh's <code>WithInput</code>/<code>WithOutput</code> options, and drive the hydrate/scan spinner program with <code>github.com/charmbracelet/x/exp/teatest/v2</code> (test-only dependency), asserting spinner frames render and the completion line appears.</span></li>
         </ul>
       </div>
     </section>

@@ -33,6 +33,34 @@ and run this playbook again. A restart is expected after first approving macFUSE
 
 ## FUSE-Free Preview
 
+If preview prints `(no tracked projects)`, the manifest has no projects yet.
+Track a real directory before the mount test.
+
+For a disposable smoke test with actual files:
+
+```bash
+tmp="$(mktemp -d)"
+export DEVSPACE_HOME="$tmp/home"
+workspace="$tmp/workspace"
+
+mkdir -p "$workspace/apps/demo"
+printf "hello from devspace\n" > "$workspace/apps/demo/README.md"
+
+./bin/devspace init --workspace "$workspace"
+./bin/devspace project add apps/demo
+```
+
+For a real checkout, initialize DevSpace at the parent workspace and add the
+project by relative path:
+
+```bash
+./bin/devspace init --workspace ~/Projects/personal
+./bin/devspace project add devdrop
+```
+
+Do not initialize the workspace at the same directory you want to track as a
+project. Project paths must be inside the workspace root, not the root itself.
+
 ```bash
 rm -rf /tmp/devspace-mount-smoke
 mkdir -p /tmp/devspace-mount-smoke
@@ -42,8 +70,8 @@ mkdir -p /tmp/devspace-mount-smoke
 Expected result:
 
 - The command exits successfully.
-- It prints projected manifest entries, or `(no tracked projects)` for an empty
-  workspace.
+- It prints tracked project entries such as `apps/demo local manual local`, or
+  `(no tracked projects)` for an empty workspace.
 - It does not require FUSE.
 
 ## Real Mount Smoke Test
@@ -60,14 +88,15 @@ In a second terminal, verify the mount:
 ```bash
 mount | grep devspace-mount-smoke
 ls -la /tmp/devspace-mount-smoke
+cat /tmp/devspace-mount-smoke/apps/demo/README.md
 ```
 
 Expected result:
 
 - The first terminal keeps running while the filesystem is mounted.
 - `mount` shows `/tmp/devspace-mount-smoke`.
-- `ls` succeeds and shows manifest-backed entries, or an empty root for a
-  workspace with no tracked projects.
+- `ls` succeeds and shows manifest-backed entries.
+- Reading a file through the mount returns the original project file content.
 
 ## Unmount
 
@@ -95,7 +124,7 @@ Record these fields in the SDD proof artifact or PR comment:
 - macFUSE readiness check result.
 - Preview output.
 - Whether the real mount attached.
-- `mount` and `ls` output while mounted.
+- `mount`, `ls`, and file-read output while mounted.
 - Unmount result.
 
 ## Failure Notes

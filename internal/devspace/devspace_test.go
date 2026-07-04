@@ -1133,6 +1133,7 @@ func TestVersionSubcommandMatchesConfiguredVersion(t *testing.T) {
 
 func TestFangStyledHelpWhenColorForced(t *testing.T) {
 	clearColorEnv(t)
+	resetStylesAfterTest(t)
 	t.Setenv("CLICOLOR_FORCE", "1")
 	root := NewRootCommand("test")
 	var buf bytes.Buffer
@@ -1148,6 +1149,7 @@ func TestFangStyledHelpWhenColorForced(t *testing.T) {
 
 func TestFangHelpPlainWhenPiped(t *testing.T) {
 	clearColorEnv(t)
+	resetStylesAfterTest(t)
 	root := NewRootCommand("test")
 	var buf bytes.Buffer
 	root.SetOut(&buf)

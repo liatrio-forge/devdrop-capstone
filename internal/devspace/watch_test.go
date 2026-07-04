@@ -114,6 +114,7 @@ func TestRefreshProjectsForWatchOnlyTouchesChangedProject(t *testing.T) {
 
 func TestWatchDiagnosticsAreLogfmtWhenPiped(t *testing.T) {
 	clearColorEnv(t)
+	resetStylesAfterTest(t)
 	hardeningInitWorkspace(t, "code")
 	var diagnostics bytes.Buffer
 

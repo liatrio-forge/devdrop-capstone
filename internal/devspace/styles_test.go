@@ -15,6 +15,21 @@ func clearColorEnv(t *testing.T) {
 	}
 }
 
+// resetStylesAfterTest snapshots the package-level style globals and restores
+// them on cleanup. Every test that calls configureStyles or mutates
+// currentProfile/currentTheme/currentNoColor directly must call this first,
+// otherwise a colored profile can leak into unrelated tests that call
+// output helpers (printStatus, RunDoctor, ...) directly without going through
+// configureStyles — since those globals are shared package state, not
+// per-invocation state, in the test binary.
+func resetStylesAfterTest(t *testing.T) {
+	t.Helper()
+	savedTheme, savedProfile, savedNoColor := currentTheme, currentProfile, currentNoColor
+	t.Cleanup(func() {
+		currentTheme, currentProfile, currentNoColor = savedTheme, savedProfile, savedNoColor
+	})
+}
+
 // renderThemed always returns the theme's full-color rendering (the theme
 // itself is never plain; stripping happens in styledWriter).
 func renderThemed() string {
@@ -23,6 +38,7 @@ func renderThemed() string {
 
 func TestStyledWriterStripsAnsiForNonTTYByDefault(t *testing.T) {
 	clearColorEnv(t)
+	resetStylesAfterTest(t)
 	var buf bytes.Buffer
 	configureStyles(&buf, false)
 
@@ -40,6 +56,7 @@ func TestStyledWriterStripsAnsiForNonTTYByDefault(t *testing.T) {
 
 func TestStyledWriterPreservesAnsiWhenCliColorForced(t *testing.T) {
 	clearColorEnv(t)
+	resetStylesAfterTest(t)
 	t.Setenv("CLICOLOR_FORCE", "1")
 	var buf bytes.Buffer
 	configureStyles(&buf, false)
@@ -55,6 +72,7 @@ func TestStyledWriterPreservesAnsiWhenCliColorForced(t *testing.T) {
 
 func TestStyledWriterNoColorFlagOverridesForcing(t *testing.T) {
 	clearColorEnv(t)
+	resetStylesAfterTest(t)
 	t.Setenv("CLICOLOR_FORCE", "1")
 	var buf bytes.Buffer
 	configureStyles(&buf, true) // --no-color
@@ -73,12 +91,12 @@ func TestStyledWriterNoColorFlagOverridesForcing(t *testing.T) {
 
 func TestStyledWriterHonorsNoColorEnvOnRealTTYProfile(t *testing.T) {
 	clearColorEnv(t)
+	resetStylesAfterTest(t)
 	// Simulate an application that has already detected a colored profile
 	// (as if running on a real TTY) and confirm NO_COLOR-driven ASCII
 	// downgrade still strips color (decorations like bold may remain per the
 	// NO_COLOR spec, but no color escape should survive).
 	currentProfile = colorprofile.ASCII
-	defer func() { currentProfile = colorprofile.NoTTY }()
 
 	var out bytes.Buffer
 	if _, err := styledWriter(&out).Write([]byte(renderThemed())); err != nil {

@@ -59,7 +59,12 @@ func TestMountPreviewCommandDoesNotRequireFUSE(t *testing.T) {
 	for _, want := range []string{
 		"DevSpace lazy mount preview",
 		"github.com/hanwen/go-fuse/v2/fs",
-		"apps/lazy\tgit\ton-demand\tlazy",
+		"PATH", "TYPE", "HYDRATE MODE", "STATUS", "REASON",
+		"apps/lazy",
+		"git",
+		"on-demand",
+		"lazy",
+		"will hydrate on project lookup",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("preview missing %q:\n%s", want, got)

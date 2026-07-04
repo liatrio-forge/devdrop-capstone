@@ -40,6 +40,14 @@ type theme struct {
 	Info   lipgloss.Style
 	Header lipgloss.Style
 	Muted  lipgloss.Style
+	Emph   lipgloss.Style
+}
+
+// badge renders a bracketed, uppercase severity tag such as "[OK]" or
+// "[FAIL]" in the given style. The bracketed form is kept in both styled and
+// plain (NoTTY) output so text stays grep-friendly either way.
+func (t theme) badge(style lipgloss.Style, label string) string {
+	return style.Render("[" + label + "]")
 }
 
 // currentTheme, currentProfile, and currentNoColor are resolved once per CLI
@@ -61,12 +69,13 @@ func colorTheme(darkBackground bool) theme {
 	}
 	accent := pick(liatrioGreenOnLight, liatrioGreenOnDark)
 	return theme{
-		OK:     lipgloss.NewStyle().Foreground(accent),
-		Warn:   lipgloss.NewStyle().Foreground(pick(amberOnLight, amberOnDark)),
-		Fail:   lipgloss.NewStyle().Foreground(lipgloss.Color(liatrioRed)),
+		OK:     lipgloss.NewStyle().Bold(true).Foreground(accent),
+		Warn:   lipgloss.NewStyle().Bold(true).Foreground(pick(amberOnLight, amberOnDark)),
+		Fail:   lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(liatrioRed)),
 		Info:   lipgloss.NewStyle().Foreground(pick(slateOnLight, slateOnDark)),
 		Header: lipgloss.NewStyle().Bold(true).Foreground(accent),
 		Muted:  lipgloss.NewStyle().Foreground(pick(slateOnLight, slateOnDark)),
+		Emph:   lipgloss.NewStyle().Bold(true),
 	}
 }
 

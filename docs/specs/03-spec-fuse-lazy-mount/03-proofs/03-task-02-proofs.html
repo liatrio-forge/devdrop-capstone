@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>03-task-02-proofs</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff; --fg: #1a1a2e; --muted: #6b7280; --border: #e5e7eb;
+    --card: #f9fafb; --accent: #4f46e5; --pass: #059669; --fail: #dc2626; --warn: #d97706;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1117; --fg:#e6e6ef; --muted:#9ca3af; --border:#262a35; --card:#161922; --accent:#818cf8; --pass:#34d399; --fail:#f87171; --warn:#fbbf24; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height:1.6; }
+  .doc { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  header.doc-header { border-bottom: 1px solid var(--border); padding-bottom:1rem; margin-bottom:2rem; }
+  h1 { margin: .25rem 0; font-size:1.6rem; }
+  h2 { margin-top:2rem; border-bottom:1px solid var(--border); padding-bottom:.35rem; }
+  .meta { color:var(--muted); font-size:.9rem; }
+  .badge { display:inline-block; font-size:.72rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:.25rem .6rem; border-radius:999px; }
+  .badge-type { background:var(--accent); color:#fff; }
+  .status-pass, .status-done, .status-verified { background:var(--pass); color:#fff; }
+  .status-fail, .status-failed { background:var(--fail); color:#fff; }
+  .status-flag, .status-pending, .status-unknown, .status-in-progress { background:var(--warn); color:#111; }
+  table { width:100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { border:1px solid var(--border); padding:.5rem .75rem; text-align:left; vertical-align:top; }
+  th { background:var(--card); }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:.5rem; padding:1rem 1.25rem; margin:1rem 0; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  pre { background:var(--card); border:1px solid var(--border); border-radius:.5rem; padding:1rem; overflow-x:auto; }
+  .task-list { list-style:none; padding-left:0; }
+  .task { padding:.35rem 0; }
+  .task[data-status="done"] .task-label::before { content: "\2611 "; }
+  .task[data-status="pending"] .task-label::before { content: "\2610 "; }
+  .task[data-status="in-progress"] .task-label::before { content: "\25D1 "; }
+  figure { margin: 1rem 0; }
+  figure img { max-width:100%; border:1px solid var(--border); border-radius:.5rem; }
+  figcaption { color:var(--muted); font-size:.85rem; margin-top:.35rem; }
+</style>
+</head>
+<body data-overall-status="PASS">
+<div class="doc">
+  <header class="doc-header">
+    <span class="badge badge-type">Proof</span>
+    <h1>03-task-02-proofs</h1>
+    <p class="meta">Sequence 03 · Feature: fuse-lazy-mount · Task 2</p>
+  </header>
+  <section class="card">
+    <h2>Summary</h2>
+    <p><span class="badge status-pass">PASS</span> Linux hosted FUSE is proven GO and is positioned as a CI safety net after the macOS-first developer path.</p>
+  </section>
+  <section>
+    <h2>Probe Evidence</h2>
+    <p>Temporary PR #25 ran <code>fuse-probe</code>. The first attempt failed before FUSE because the throwaway module needed <code>go mod tidy</code>; the corrected run passed.</p>
+    <table>
+      <tbody>
+        <tr><th>Run</th><td><code>28685409454</code></td></tr>
+        <tr><th>Repository</th><td><code>liatrio-forge/devdrop-capstone</code></td></tr>
+        <tr><th>Runner</th><td><code>ubuntu-24.04</code>, image version <code>20260628.225.1</code></td></tr>
+        <tr><th>FUSE</th><td><code>/dev/fuse</code> present; <code>fusermount3 version: 3.14.0</code></td></tr>
+      </tbody>
+    </table>
+    <pre><code>entry: hello.txt
+read: fuse ok
+unmounted</code></pre>
+  </section>
+  <section>
+    <h2>Permanent Coverage</h2>
+    <p>The temporary probe workflow is deleted from the final branch state. Permanent automation is the Linux-only <code>mount-integration</code> job in <code>.github/workflows/ci.yml</code>, running <code>go test ./internal/devspace -run Fuse -tags fusetest -v</code>.</p>
+  </section>
+</div>
+</body>
+</html>

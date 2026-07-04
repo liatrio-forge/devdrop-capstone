@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>03-validation-fuse-lazy-mount</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff; --fg: #1a1a2e; --muted: #6b7280; --border: #e5e7eb;
+    --card: #f9fafb; --accent: #4f46e5; --pass: #059669; --fail: #dc2626; --warn: #d97706;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1117; --fg:#e6e6ef; --muted:#9ca3af; --border:#262a35; --card:#161922; --accent:#818cf8; --pass:#34d399; --fail:#f87171; --warn:#fbbf24; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height:1.6; }
+  .doc { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  header.doc-header { border-bottom: 1px solid var(--border); padding-bottom:1rem; margin-bottom:2rem; }
+  h1 { margin: .25rem 0; font-size:1.6rem; }
+  h2 { margin-top:2rem; border-bottom:1px solid var(--border); padding-bottom:.35rem; }
+  .meta { color:var(--muted); font-size:.9rem; }
+  .badge { display:inline-block; font-size:.72rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:.25rem .6rem; border-radius:999px; }
+  .badge-type { background:var(--accent); color:#fff; }
+  .status-pass, .status-done, .status-verified { background:var(--pass); color:#fff; }
+  .status-fail, .status-failed { background:var(--fail); color:#fff; }
+  .status-flag, .status-pending, .status-unknown, .status-in-progress { background:var(--warn); color:#111; }
+  table { width:100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { border:1px solid var(--border); padding:.5rem .75rem; text-align:left; vertical-align:top; }
+  th { background:var(--card); }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:.5rem; padding:1rem 1.25rem; margin:1rem 0; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  pre { background:var(--card); border:1px solid var(--border); border-radius:.5rem; padding:1rem; overflow-x:auto; }
+  .task-list { list-style:none; padding-left:0; }
+  .task { padding:.35rem 0; }
+  .task[data-status="done"] .task-label::before { content: "\2611 "; }
+  .task[data-status="pending"] .task-label::before { content: "\2610 "; }
+  .task[data-status="in-progress"] .task-label::before { content: "\25D1 "; }
+  figure { margin: 1rem 0; }
+  figure img { max-width:100%; border:1px solid var(--border); border-radius:.5rem; }
+  figcaption { color:var(--muted); font-size:.85rem; margin-top:.35rem; }
+  .metric-list { list-style:none; padding-left:0; }
+  .metric-list li { padding:.25rem 0; }
+  .gate-list { margin:.5rem 0; }
+</style>
+</head>
+<body data-overall-status="PASS">
+<div class="doc">
+  <header class="doc-header">
+    <span class="badge badge-type">Validation</span>
+    <h1>03-validation-fuse-lazy-mount</h1>
+    <p class="meta">Sequence 03 · Feature: fuse-lazy-mount · Phase 4</p>
+  </header>
+  <section class="card">
+    <h2>Executive Summary</h2>
+    <p><span class="badge status-pass" data-role="overall-status">PASS</span></p>
+    <p>Gates tripped: None - all gates passed.</p>
+    <p>Implementation Ready: Yes. The feature is implemented as a macOS-first product plan with Linux hosted CI as repeatable automation coverage.</p>
+    <ul class="metric-list">
+      <li>Requirements Verified: 100%</li>
+      <li>Proof Artifacts Working: 100%</li>
+      <li>Files Changed vs Expected: Expected, with supporting doc reorganization preserved.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>Coverage Matrix</h2>
+    <table>
+      <thead><tr><th>Functional Requirement</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>macOS-first readiness documented</td><td><span class="badge status-verified">Verified</span></td><td><code>docs/architecture/fuse-lazy-mount.md</code>, task 01 proof.</td></tr>
+        <tr><td>Linux hosted CI safety net proven and wired</td><td><span class="badge status-verified">Verified</span></td><td>Run <code>28685409454</code>, <code>mount-integration</code>, <code>mount_fuse_test.go</code>.</td></tr>
+        <tr><td>Default verification remains FUSE-free</td><td><span class="badge status-verified">Verified</span></td><td><code>make verify</code> passes without <code>-tags fusetest</code>.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Repository Standard</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>Go formatting and tests beside implementation</td><td><span class="badge status-verified">Verified</span></td><td><code>internal/devspace/mount_fuse_test.go</code>, <code>gofmt</code>, <code>go test ./...</code>.</td></tr>
+        <tr><td>Normal local gate is <code>make verify</code></td><td><span class="badge status-verified">Verified</span></td><td>Task 03 proof.</td></tr>
+        <tr><td>No generated workspace state or secrets</td><td><span class="badge status-verified">Verified</span></td><td>Proof artifacts use sanitized command output and no credentials.</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Proof Artifact</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td><code>03-task-01-proofs.html</code></td><td><span class="badge status-verified">Verified</span></td><td>macOS readiness state.</td></tr>
+        <tr><td><code>03-task-02-proofs.html</code></td><td><span class="badge status-verified">Verified</span></td><td>Linux probe result.</td></tr>
+        <tr><td><code>03-task-03-proofs.html</code></td><td><span class="badge status-verified">Verified</span></td><td>local verification and plan reconciliation.</td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section>
+    <h2>Validation Issues</h2>
+    <table>
+      <thead><tr><th>Severity</th><th>Issue</th><th>Impact</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge status-pass">PASS</span></td><td>No blocking issues.</td><td>None.</td><td>Wait for CI and CodeRabbit before merge.</td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section>
+    <h2>Evidence Appendix</h2>
+    <pre><code>Linux probe run: 28685409454
+Local tests: go test ./...
+Tagged compile: GOOS=linux go test ./internal/devspace -run Fuse -tags fusetest -c -o /tmp/devspace-fuse.test
+Default gate: make verify</code></pre>
+  </section>
+</div>
+</body>
+</html>

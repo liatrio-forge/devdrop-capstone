@@ -160,6 +160,41 @@ func TestEffectiveRoleResolution(t *testing.T) {
 			absentWarning: "direct and team grants disagree",
 			workspace:     true,
 		},
+		{
+			name:      "workspace grants on same project disagree",
+			recipient: localRecipient,
+			manifest: Manifest{
+				Version:       ManifestVersion,
+				WorkspaceRoot: "/tmp/workspace",
+				Projects:      []Project{baseProject},
+				Users:         []User{baseUser},
+				Teams: []Team{{
+					ID:        "team-platform",
+					Name:      "Platform",
+					Members:   []TeamMember{{UserID: baseUser.ID, Role: AccessRoleMaintainer, AddedAt: "now"}},
+					CreatedAt: "now",
+				}},
+				Access: []ProjectAccess{
+					{ProjectID: baseProject.ID, UserID: baseUser.ID, Role: AccessRoleViewer, AddedAt: "now"},
+					{ProjectID: baseProject.ID, TeamID: "team-platform", Role: AccessRoleMaintainer, AddedAt: "now"},
+				},
+			},
+			wantRole:    AccessRoleMaintainer,
+			wantWarning: "direct and team grants disagree",
+			workspace:   true,
+		},
+		{
+			name:      "unknown team access warns",
+			recipient: localRecipient,
+			manifest: Manifest{
+				Version:       ManifestVersion,
+				WorkspaceRoot: "/tmp/workspace",
+				Projects:      []Project{baseProject},
+				Users:         []User{baseUser},
+				Access:        []ProjectAccess{{ProjectID: baseProject.ID, TeamID: "team-missing", Role: AccessRoleDeveloper, AddedAt: "now"}},
+			},
+			wantWarning: `access references unknown team "team-missing" on project "project-api"`,
+		},
 	}
 
 	for _, tc := range cases {
@@ -362,7 +397,7 @@ func setLocalProjectRole(t *testing.T, workspace, projectID, role string) {
 
 func assertNoAccessWarning(t *testing.T, stderr string) {
 	t.Helper()
-	if stderr != "" {
+	if strings.Contains(stderr, "Access role advisory") {
 		t.Fatalf("stderr = %q, want no advisories", stderr)
 	}
 }

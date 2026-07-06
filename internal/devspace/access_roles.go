@@ -54,7 +54,7 @@ func resolveEffectiveRole(m Manifest, projectID, localAgeRecipient string) effec
 	}
 
 	result.Role = mostPrivilegedRole(candidates)
-	if projectID != "" && directTeamDisagreement(candidates) {
+	if directTeamDisagreement(candidates) {
 		result.Warnings = append(result.Warnings, "Access role advisory: direct and team grants disagree; using the most privileged active grant.")
 	}
 	return result
@@ -101,6 +101,7 @@ func activeRoleCandidates(m Manifest, projectID, userID string) ([]roleCandidate
 		}
 		team, ok := teamsByID[access.TeamID]
 		if !ok {
+			warnings = append(warnings, fmt.Sprintf("Access role advisory: access references unknown team %q on project %q.", access.TeamID, access.ProjectID))
 			continue
 		}
 		member, ok := activeTeamMember(team, userID)

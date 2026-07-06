@@ -28,6 +28,7 @@ carries a PENDING local-proof marker, and spec 02's Plan 015 validation gap
 ruled out, so a local run is the only unlock.
 
 **Work:**
+
 1. Install macFUSE, approve the kernel/system extension.
 2. Run `docs/operations/macos-fuse-run-playbook.md` end to end: mount, list
    placeholders, lazy-hydrate one project, unmount, run diagnostics.
@@ -80,6 +81,7 @@ field-level merge interaction) must be answered in the spec's questions phase
 before tasks exist.
 
 **Scope for the spec (from the doc's own follow-up cards):**
+
 - Computed `effectiveRole` surfaced as warnings only — no enforcement.
 - CLI warnings on risky mutations (e.g. a viewer-scoped identity editing env
   profiles or manifest records).

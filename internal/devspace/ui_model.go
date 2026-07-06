@@ -61,6 +61,12 @@ type dashboardSyncStatus struct {
 	UnavailableReason  string
 }
 
+const (
+	syncStatusRemoteNotConfigured = "remote not configured"
+	syncStatusLoading             = "loading"
+	syncStatusHostedUnavailable   = "unavailable-for-hosted"
+)
+
 type scanLoadedMsg struct {
 	rows    []dashboardRow
 	summary ScanSummary
@@ -104,10 +110,10 @@ func newDashboardModel(noWatch bool) dashboardModel {
 		model.machineID = cfg.MachineID
 		model.machineName = cfg.MachineName
 		if cfg.ManifestRemote == "" && !hostedSyncConfigured(cfg) {
-			model.syncStatus.UnavailableReason = "remote not configured"
+			model.syncStatus.UnavailableReason = syncStatusRemoteNotConfigured
 		} else {
 			model.syncStatus.Configured = true
-			model.syncStatus.UnavailableReason = "loading"
+			model.syncStatus.UnavailableReason = syncStatusLoading
 		}
 	}
 	return model
@@ -254,8 +260,8 @@ func (m dashboardModel) renderSyncStatus() string {
 	b.WriteString("\n")
 	status := m.syncStatus
 	if status.UnavailableReason != "" {
-		if status.UnavailableReason == "remote not configured" {
-			b.WriteString(currentTheme.Muted.Render("remote not configured"))
+		if status.UnavailableReason == syncStatusRemoteNotConfigured {
+			b.WriteString(currentTheme.Muted.Render(syncStatusRemoteNotConfigured))
 		} else {
 			b.WriteString(currentTheme.Warn.Render("status unavailable: " + status.UnavailableReason))
 		}

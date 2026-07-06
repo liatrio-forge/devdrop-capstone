@@ -429,6 +429,99 @@ func TestWorkspaceReconcileForceProjectFlagsResolveMultipleConflicts(t *testing.
 	}
 }
 
+func TestHostedReconcileForceProjectFlagsResolveMultipleConflicts(t *testing.T) {
+	root := t.TempDir()
+	server := hostedSyncTestServer(t)
+	workspaceA := filepath.Join(root, "machine-a", "code")
+	workspaceB := filepath.Join(root, "machine-b", "code")
+	homeA := filepath.Join(root, "home-a")
+	homeB := filepath.Join(root, "home-b")
+	projects := []Project{
+		hardeningProject("apps/one", ProjectTypeLocal, ""),
+		hardeningProject("apps/two", ProjectTypeLocal, ""),
+	}
+
+	t.Setenv(envHome, homeA)
+	if _, err := InitWorkspace(workspaceA); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SetHostedSync(server.URL, "test-token", "team-a"); err != nil {
+		t.Fatal(err)
+	}
+	if err := SaveManifest(workspaceA, Manifest{Version: ManifestVersion, WorkspaceRoot: workspaceA, Projects: projects}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PushHostedManifest(); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv(envHome, homeB)
+	if _, err := InitWorkspace(workspaceB); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SetHostedSync(server.URL, "test-token", "team-a"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PullHostedManifest(); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv(envHome, homeA)
+	remoteManifest, err := LoadManifest(workspaceA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remoteManifest.Projects[0].Name = "remote-one"
+	remoteManifest.Projects[1].Name = "remote-two"
+	if err := SaveManifest(workspaceA, remoteManifest); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PushHostedManifest(); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv(envHome, homeB)
+	localManifest, err := LoadManifest(workspaceB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	localManifest.Projects[0].Name = "local-one"
+	localManifest.Projects[1].Name = "local-two"
+	if err := SaveManifest(workspaceB, localManifest); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := ReconcileHostedManifest("", true, map[string]string{
+		projects[0].ID: "remote",
+		projects[1].ID: "local",
+	})
+	if err != nil {
+		t.Fatalf("hosted reconcile --force-project multiple error: %v", err)
+	}
+	if len(plan.Conflicts) != 0 {
+		t.Fatalf("forced hosted plan still has conflicts: %+v", plan.Conflicts)
+	}
+	applied, err := LoadManifest(workspaceB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if project, _ := findProject(applied, projects[0].ID); project.Name != "remote-one" {
+		t.Fatalf("%s name = %q, want remote-one", projects[0].ID, project.Name)
+	}
+	if project, _ := findProject(applied, projects[1].ID); project.Name != "local-two" {
+		t.Fatalf("%s name = %q, want local-two", projects[1].ID, project.Name)
+	}
+	envelope := hostedSyncGet(t, server.URL, "team-a")
+	if envelope.Version != 3 {
+		t.Fatalf("hosted version = %d, want 3", envelope.Version)
+	}
+	if project, _ := findProject(envelope.Manifest, projects[0].ID); project.Name != "remote-one" {
+		t.Fatalf("server %s name = %q, want remote-one", projects[0].ID, project.Name)
+	}
+	if project, _ := findProject(envelope.Manifest, projects[1].ID); project.Name != "local-two" {
+		t.Fatalf("server %s name = %q, want local-two", projects[1].ID, project.Name)
+	}
+}
+
 func TestWorkspaceReconcileForceProjectOverridesGlobalForce(t *testing.T) {
 	workspace, projects := setupWorkspaceReconcileProjectConflicts(t)
 

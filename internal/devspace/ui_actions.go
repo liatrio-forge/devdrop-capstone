@@ -149,14 +149,14 @@ func dashboardSyncStatusCmd() tea.Cmd {
 				return err
 			}
 			if !status.Configured {
-				status.UnavailableReason = "remote not configured"
+				status.UnavailableReason = syncStatusRemoteNotConfigured
 				return nil
 			}
 			if status.LastSyncAt == "" {
 				status.LastSyncAt = baseManifestTimestamp()
 			}
 			if cfg.ManifestRemote == "" {
-				status.GitDiffUnavailable = "unavailable-for-hosted"
+				status.GitDiffUnavailable = syncStatusHostedUnavailable
 				return nil
 			}
 			return nil

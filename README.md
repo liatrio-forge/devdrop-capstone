@@ -390,10 +390,10 @@ On first run, an existing `~/.devdrop` application home is automatically migrate
 
 ## 🗺️ Roadmap
 
-- Manifest conflict resolution and force flags.
-- Hosted API or cloud object storage.
+- Per-project conflict choices in `workspace reconcile` (global resolution and `--force` shipped).
+- Hosted sync: grow the shipped prototype into a managed service.
 - Daemon process management for running watch mode outside a terminal.
-- FUSE or virtual filesystem lazy loading.
+- FUSE lazy mount: grow the shipped prototype into a supported feature (macOS local proof pending).
 - Managed team identity provider & OS keychain integration.
 - Release-readiness checklist automation.
 

@@ -1,6 +1,6 @@
 # macOS Local Mount Proof
 
-This worksheet records the evidence from a local macOS FUSE mount smoke test run. When complete, it closes the PENDING local-proof marker in `docs/architecture/fuse-lazy-mount.md` and the spec-02 Plan 015 validation gap, confirming that `devspace mount` operates correctly on macOS with macFUSE installed.
+This worksheet records the evidence from a local macOS FUSE mount smoke test run. When complete, it closes only the PENDING local-proof marker in `docs/architecture/fuse-lazy-mount.md`, confirming that `devspace mount` operates correctly on macOS with macFUSE installed. The spec-02 Plan 015 validation gap stays separate because it requires GitHub Actions FUSE probe evidence.
 
 Status: AWAITING RUN
 
@@ -9,6 +9,7 @@ Status: AWAITING RUN
 Build the binary first; all later steps run `./bin/devspace`:
 
 ```bash
+mkdir -p bin
 go build -trimpath -o bin/devspace ./cmd/devspace
 ```
 
@@ -62,8 +63,8 @@ printf "hello from devspace\n" > "$workspace/apps/demo/README.md"
 ### Option 2: Real checkout
 
 ```bash
-./bin/devspace init --workspace ~/Projects/personal
-./bin/devspace project add devdrop
+./bin/devspace init --workspace ~/Projects/<workspace>
+./bin/devspace project add <project-slug>
 ```
 
 Then run the preview:
@@ -132,4 +133,4 @@ paste output here
 ## After the Run
 
 1. Flip the PENDING local-proof marker in `docs/architecture/fuse-lazy-mount.md` to reference this proof file.
-2. Record Plan 015 closure in `docs/specs/02-spec-hardening-plan-execution/02-validation-hardening-plan-execution.md` (currently "PASS WITH GAP") referencing this proof file.
+2. Leave the Plan 015 validation gap in `docs/specs/02-spec-hardening-plan-execution/02-validation-hardening-plan-execution.md` unchanged unless separate GitHub Actions FUSE probe evidence is available.

@@ -51,15 +51,16 @@ Verified directly against the code in this repo (paths and signatures
 current as of this brief; re-verify before implementing, as spec 07 may land
 first and touch the same files):
 
-- `internal/devspace/ui_actions.go` establishes the dashboard action
-  pattern: each action is a `func dashboardXxxCmd(...) tea.Cmd` that runs its
-  work inside `runLocked(op func() error) error` (the single dashboard lock
-  boundary, since `withAppLock` is non-reentrant) and returns a
-  `tea.Cmd` producing an `actionResultMsg`. Existing examples:
-  `dashboardScanCmd()`, `dashboardPlanCmd()`, `dashboardApplyCmd()`,
-  `dashboardHydrateCmd(ref string)`, plus `dashboardRefreshCmd(syncMode
-  string)` and `dashboardWatchCmd(syncMode string)`. New sync/reconcile
-  commands (e.g. a `dashboardReconcileCmd`) should follow this same
+- `internal/devspace/ui_actions.go` establishes the dashboard command pattern:
+  each command is a `func dashboardXxxCmd(...) tea.Cmd` that runs its work
+  inside `runLocked(op func() error) error` where it touches shared workspace
+  state (the single dashboard lock boundary, since `withAppLock` is
+  non-reentrant). `dashboardScanCmd()` returns `scanLoadedMsg`;
+  mutation/refresh actions such as `dashboardPlanCmd()`,
+  `dashboardApplyCmd()`, `dashboardHydrateCmd(ref string)`, and
+  `dashboardRefreshCmd(syncMode string)` return `actionResultMsg`; watch
+  refresh paths return `watchRefreshMsg`. New sync/reconcile commands (e.g. a
+  `dashboardReconcileCmd`) should follow the mutation/refresh
   lock-then-`actionResultMsg` shape.
 - `internal/devspace/reconcile.go` holds the reconcile engine entry points
   this spec would wire into the dashboard:

@@ -33,10 +33,11 @@ drift (validation rates it optional; SDD artifacts are historical records).
 
 ## F1 — macOS FUSE local proof (P1 · S · requires Jacob's Mac)
 
-**Why first:** the single item blocking two specs. `docs/architecture/fuse-lazy-mount.md`
-carries a PENDING local-proof marker, and spec 02's Plan 015 validation gap
-("PASS WITH GAP") needs an observed FUSE run. Hosted macOS runners are already
-ruled out, so a local run is the only unlock.
+**Why first:** the item blocking product confidence in the macOS-first mount
+path. `docs/architecture/fuse-lazy-mount.md` carries a PENDING local-proof
+marker that requires a developer Mac with macFUSE installed and approved. Spec
+02's Plan 015 validation gap stays separate: it needs GitHub Actions FUSE probe
+evidence and should not be closed by a local smoke test.
 
 **Work:**
 
@@ -45,40 +46,38 @@ ruled out, so a local run is the only unlock.
    placeholders, lazy-hydrate one project, unmount, run diagnostics.
 3. Capture the terminal session as a proof artifact (vhs tape or transcript)
    under `docs/specs/03-spec-fuse-lazy-mount/03-proofs/`.
-4. Flip the PENDING marker in `fuse-lazy-mount.md`; record Plan 015 closure in
-   `docs/specs/02-spec-hardening-plan-execution/02-validation-hardening-plan-execution.md`.
+4. Flip the PENDING marker in `fuse-lazy-mount.md`; leave the spec-02 Plan 015
+   validation gap open unless separate GitHub Actions FUSE probe evidence is
+   available.
 
-**Acceptance:** proof artifact committed; both docs updated; spec 02 no longer
-"PASS WITH GAP".
+**Acceptance:** proof artifact committed; `fuse-lazy-mount.md` references the
+local proof; spec 02 still records the Plan 015 CI/probe gap unless separate
+probe evidence exists.
 
 **Can't be delegated:** needs physical hardware and a GUI security-approval
 click. Everything after step 2 can be agent-driven.
 
 ## F2 — Close spec-01 attestation finding M-1 (P2 · XS · owner decision)
 
-**Decision required:** make the repo public, or accept M-1 permanently.
-
-- If public: run `gh attestation verify checksums.txt --repo liatrio-forge/devdrop-capstone`
-  against the latest release assets and record the passing output in
-  `docs/specs/01-spec-cicd-goreleaser/01-validation-cicd-goreleaser.md`.
-- If it stays private: amend the validation to mark M-1 "accepted — blocked by
-  repo visibility policy" so it stops surfacing as open work.
-
-Either path is under 30 minutes; the only real content is the visibility call.
+**Status:** done. The repo stays private by policy, so M-1 is accepted as a
+visibility-limited attestation gap rather than open engineering work.
+`docs/specs/01-spec-cicd-goreleaser/01-validation-cicd-goreleaser.md` records
+the rationale and the re-open condition: if visibility changes, run
+`gh attestation verify checksums.txt --repo liatrio-forge/devdrop-capstone`
+against the latest release assets and save the output there.
 
 ## F3 — Capstone wave-5 deliverables (P1 by deadline · M)
 
-From `proof-artifacts.md` and the capstone README. These run on the wave-5
-clock regardless of engineering work:
+From `proof-artifacts.md` and the capstone README. Wave A closed the case-study
+rows and recorded the current proof-artifact status; the remaining items are
+manual deadline work:
 
-1. Finalize `case-study.md` and `remote-agent-case-study.md` (both "Drafted").
-2. Record the demo per `demo-script.md` — the per-feature vhs tapes/gifs in
-   `docs/demos/` already cover the segments; the remaining work is the narrated
-   end-to-end recording.
-3. Update `proof-artifacts.md` rows from Pending/Drafted with final links.
-4. Personal reflection after demo feedback (blocked on 2).
-5. **Owner decision:** execute the stretch cards via a wave-ship run or
-   manually — or explicitly descope them. Recording the decision is itself the
+1. Record the narrated end-to-end demo per `demo-script.md`; the per-feature
+   vhs tapes/gifs in `docs/demos/` already cover the segments.
+2. Save the demo link in `proof-artifacts.md`.
+3. Complete the personal reflection after demo feedback.
+4. **Owner decision:** execute the stretch cards via a wave-ship run, run them
+   manually, or explicitly descope them. Recording the decision is itself the
    deliverable; the cards stop being ambient "remaining work".
 
 ## F4 — Spec 07: access-role warning tier (P2 · M · design phase first)

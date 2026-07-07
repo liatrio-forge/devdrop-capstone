@@ -91,12 +91,16 @@ export function reduce(state: DashboardState, action: Action): DashboardState {
           events: pushEvent(state.events, `watch stopped: ${event.message}`),
         };
       }
-      return clampSelected({
-        ...state,
-        rows: event.rows ?? [],
-        summary: event.summary,
-        events: pushEvent(state.events, watchEventText(event)),
-      });
+      if (event.type === "watch-refresh") {
+        return clampSelected({
+          ...state,
+          rows: event.rows ?? [],
+          summary: event.summary,
+          watchAlive: true,
+          events: pushEvent(state.events, watchEventText(event)),
+        });
+      }
+      return state;
     }
     case "action-start":
       return { ...state, busy: action.label, error: undefined };

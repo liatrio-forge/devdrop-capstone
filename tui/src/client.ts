@@ -24,6 +24,7 @@ export class DevspaceClient {
   private pending = new Map<number, Pending>();
   private eventListeners = new Set<(ev: ServerEvent) => void>();
   private closeListeners = new Set<(err?: Error) => void>();
+  private earlyEvents: ServerEvent[] = [];
   private buffer = "";
 
   constructor(
@@ -52,6 +53,8 @@ export class DevspaceClient {
 
   onEvent(listener: (ev: ServerEvent) => void): () => void {
     this.eventListeners.add(listener);
+    for (const event of this.earlyEvents) listener(event);
+    this.earlyEvents = [];
     return () => this.eventListeners.delete(listener);
   }
 
@@ -100,6 +103,11 @@ export class DevspaceClient {
       return; // ignore non-JSON noise on the stream
     }
     if (msg.method === "event" && msg.params) {
+      if (this.eventListeners.size === 0) {
+        this.earlyEvents.push(msg.params);
+        this.earlyEvents = this.earlyEvents.slice(-20);
+        return;
+      }
       for (const listener of this.eventListeners) listener(msg.params);
       return;
     }
@@ -111,6 +119,14 @@ export class DevspaceClient {
     if (msg.error) pending.reject(new Error(msg.error.message));
     else pending.resolve(msg.result);
   }
+}
+
+/** Feed an async byte stream through a stateful UTF-8 decode into onText. */
+export async function pumpText(stream: AsyncIterable<Uint8Array>, onText: (text: string) => void): Promise<void> {
+  const decoder = new TextDecoder();
+  for await (const chunk of stream) onText(decoder.decode(chunk, { stream: true }));
+  const tail = decoder.decode();
+  if (tail) onText(tail);
 }
 
 export interface ConnectOptions {
@@ -157,24 +173,20 @@ export function connect(options: ConnectOptions = {}): DevspaceClient {
   });
 
   void (async () => {
-    const decoder = new TextDecoder();
     let buffer = "";
-    for await (const chunk of proc.stderr) {
-      buffer += decoder.decode(chunk, { stream: true });
+    await pumpText(proc.stderr, (text) => {
+      buffer += text;
       let idx: number;
       while ((idx = buffer.indexOf("\n")) >= 0) {
         pushStderrLine(buffer.slice(0, idx));
         buffer = buffer.slice(idx + 1);
       }
-    }
+    });
     if (buffer) pushStderrLine(buffer);
   })();
 
   void (async () => {
-    const decoder = new TextDecoder();
-    for await (const chunk of proc.stdout) {
-      client.feed(decoder.decode(chunk));
-    }
+    await pumpText(proc.stdout, (text) => client.feed(text));
     const tail = stderrLines.join("\n").trim();
     client.closed(tail ? new Error(`devspace ui-server exited: ${tail}`) : undefined);
   })();

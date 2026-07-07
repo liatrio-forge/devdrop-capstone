@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { EVENT_LIMIT, initialState, reduce, type DashboardState } from "../src/state";
-import type { ProjectRow, ScanSummary, Snapshot } from "../src/protocol";
+import type { ProjectRow, ScanSummary, ServerEvent, Snapshot } from "../src/protocol";
 
 const summary: ScanSummary = { foundProjects: 2, gitRepos: 1, untrackedFolders: 0, localOnlyProjects: 1, projectsWithEnv: 1 };
 
@@ -54,6 +54,21 @@ describe("reduce", () => {
     const dead = reduce(refreshed, { type: "server-event", event: { type: "watch-error", message: "boom" } });
     expect(dead.watchAlive).toBe(false);
     expect(dead.events[0]).toBe("watch stopped: boom");
+  });
+
+  test("unknown server events are ignored", () => {
+    const state = reduce(initialState, { type: "snapshot", label: "scan", snapshot });
+    const next = reduce(state, { type: "server-event", event: { type: "new-event" } as unknown as ServerEvent });
+    expect(next).toBe(state);
+  });
+
+  test("watch refresh marks watcher alive after an error", () => {
+    const dead = reduce(initialState, { type: "server-event", event: { type: "watch-error", message: "boom" } });
+    const alive = reduce(dead, {
+      type: "server-event",
+      event: { type: "watch-refresh", rows, summary, refresh: { fullScan: false, watchedDirCount: 1, syncChanged: false } },
+    });
+    expect(alive.watchAlive).toBe(true);
   });
 
   test("action error records message and event", () => {

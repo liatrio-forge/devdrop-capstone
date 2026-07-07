@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -351,6 +352,86 @@ func TestUIServerWatchErrorRecovers(t *testing.T) {
 	if got <= 2 {
 		t.Fatalf("expected more than 2 factory calls (backoff reset path), got %d", got)
 	}
+}
+
+func TestUIServerWatchClosedEmitsEvent(t *testing.T) {
+	dashboardSeedWorkspace(t)
+
+	factory := func(string) tea.Cmd {
+		return func() tea.Msg { return nil }
+	}
+
+	dec, inW, done := startUIServerForTest(t, uiServerOptions{watchCmdFactory: factory})
+	event := readUIServerMessage(t, dec)
+	params := event["params"].(map[string]any)
+	if event["method"] != "event" || params["type"] != "watch-error" || !strings.Contains(params["message"].(string), "watcher closed") {
+		t.Fatalf("event = %+v", event)
+	}
+	closeUIServerForTest(t, inW, done)
+}
+
+func TestUIServerScanRestartsDeadWatcher(t *testing.T) {
+	dashboardSeedWorkspace(t)
+
+	var calls atomic.Int32
+	factory := func(string) tea.Cmd {
+		return func() tea.Msg {
+			n := calls.Add(1)
+			if n <= int32(watchRetryMaxAttempts) {
+				return watchRefreshMsg{err: fmt.Errorf("boom %d", n)}
+			}
+			if n == int32(watchRetryMaxAttempts+1) {
+				return watchRefreshMsg{
+					refresh: WatchRefresh{FullScan: true, WatchedDirCount: 1},
+					rows:    []dashboardRow{{ref: "apps/api", name: "api", status: dashboardStatusHydrated}},
+					summary: ScanSummary{FoundProjects: 1},
+				}
+			}
+			return nil
+		}
+	}
+
+	dec, inW, done := startUIServerForTest(t, uiServerOptions{
+		watchCmdFactory: factory,
+		watchRetryBase:  time.Millisecond,
+		scanCmd: func() tea.Cmd {
+			return func() tea.Msg {
+				return scanLoadedMsg{
+					rows:    []dashboardRow{{ref: "apps/api", name: "api", status: dashboardStatusHydrated}},
+					summary: ScanSummary{FoundProjects: 1},
+				}
+			}
+		},
+	})
+
+	for i := 0; i < watchRetryMaxAttempts; i++ {
+		event := readUIServerMessage(t, dec)
+		params := event["params"].(map[string]any)
+		if params["type"] != "watch-error" {
+			t.Fatalf("event %d = %+v", i, event)
+		}
+	}
+
+	writeUIServerRequest(t, inW, `{"id":1,"method":"scan"}`)
+	sawRefresh := false
+	for i := 0; i < 3 && !sawRefresh; i++ {
+		msg := readUIServerMessage(t, dec)
+		if msg["method"] == "event" {
+			params := msg["params"].(map[string]any)
+			sawRefresh = params["type"] == "watch-refresh"
+			continue
+		}
+		if msg["id"] == float64(1) {
+			uiResponseResult(t, msg)
+		}
+	}
+	if !sawRefresh {
+		t.Fatal("restarted watcher did not emit watch-refresh")
+	}
+	if got := calls.Load(); got < int32(watchRetryMaxAttempts+1) {
+		t.Fatalf("watch factory calls = %d, want at least %d", got, watchRetryMaxAttempts+1)
+	}
+	closeUIServerForTest(t, inW, done)
 }
 
 func TestUIServerSyncModeWiring(t *testing.T) {

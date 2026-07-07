@@ -8,6 +8,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -127,6 +128,7 @@ type uiServer struct {
 
 	actionMu   sync.Mutex
 	actionBusy string
+	watchDown  atomic.Bool
 
 	mu  sync.Mutex // guards enc: responses and watch events interleave
 	enc *json.Encoder
@@ -216,6 +218,17 @@ func (s *uiServer) event(params any) {
 	s.write(uiServerEvent{Method: "event", Params: params})
 }
 
+func (s *uiServer) watchEnded(reason string) {
+	s.watchDown.Store(true)
+	s.event(map[string]any{"type": "watch-error", "message": reason})
+}
+
+func (s *uiServer) restartWatchIfDown() {
+	if !s.opts.NoWatch && s.watchDown.CompareAndSwap(true, false) {
+		go s.watchLoop()
+	}
+}
+
 func (s *uiServer) handle(req uiServerRequest) (any, error) {
 	switch req.Method {
 	case "hello":
@@ -232,14 +245,22 @@ func (s *uiServer) handle(req uiServerRequest) (any, error) {
 		}
 		defer s.endAction()
 		s.statusCache.invalidate()
-		return snapshotFromMsg("scan", s.opts.scanCmd()())
+		snapshot, err := snapshotFromMsg("scan", s.opts.scanCmd()())
+		if err == nil {
+			s.restartWatchIfDown()
+		}
+		return snapshot, err
 	case "refresh":
 		if err := s.beginAction("refresh"); err != nil {
 			return nil, err
 		}
 		defer s.endAction()
 		s.statusCache.invalidate()
-		return snapshotFromMsg("refresh", s.opts.refreshCmd(s.opts.SyncMode)())
+		snapshot, err := snapshotFromMsg("refresh", s.opts.refreshCmd(s.opts.SyncMode)())
+		if err == nil {
+			s.restartWatchIfDown()
+		}
+		return snapshot, err
 	case "plan":
 		if err := s.beginAction("plan"); err != nil {
 			return nil, err
@@ -334,24 +355,24 @@ func (s *uiServer) hello() (any, error) {
 // client, and returns rather than spinning forever against a broken
 // watcher.
 func (s *uiServer) watchLoop() {
+	s.watchDown.Store(false)
 	backoff := s.opts.watchRetryBase
 	consecutiveErrors := 0
 	for {
 		msg := s.opts.watchCmdFactory(s.opts.SyncMode)()
 		if msg == nil {
+			s.watchEnded("watcher closed")
 			return
 		}
 		refresh, ok := msg.(watchRefreshMsg)
 		if !ok {
+			s.watchEnded("watcher returned an unexpected result")
 			return
 		}
 		if refresh.err != nil {
 			consecutiveErrors++
 			if consecutiveErrors >= watchRetryMaxAttempts {
-				s.event(map[string]any{
-					"type":    "watch-error",
-					"message": fmt.Sprintf("watcher stopped after %d consecutive errors: %s", consecutiveErrors, refresh.err),
-				})
+				s.watchEnded(fmt.Sprintf("watcher stopped after %d consecutive errors: %s", consecutiveErrors, refresh.err))
 				return
 			}
 			s.event(map[string]any{"type": "watch-error", "message": refresh.err.Error()})

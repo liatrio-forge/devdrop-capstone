@@ -93,7 +93,7 @@ hard stops (report back instead of improvising).
 - [x] 2.5 Enforce the handshake: `app.tsx` routes any non-null `helloProblem(hello)` result — and any hello request failure — to the fatal-quit path; `main.tsx` `quit(code, message?)` restores the terminal before writing the message to stderr and exiting non-zero (Step 4, remediated)
 - [x] 2.6 Run gates (`make verify`, `make tui-verify`), spot-check that deleting a fixture field fails `bun test` (restore it), write proof file `09-proofs/09-task-02-proofs.md`, flip plan 017's row in `plans/README.md`, commit
 
-### [ ] 3.0 Harden the client and watcher: stream-safe decode, visible/recoverable watch death, legacy backoff parity (plan 018 — requires 1.0)
+### [x] 3.0 Harden the client and watcher: stream-safe decode, visible/recoverable watch death, legacy backoff parity (plan 018 — requires 1.0)
 
 #### 3.0 Proof Artifact(s)
 
@@ -105,16 +105,16 @@ hard stops (report back instead of improvising).
 
 #### 3.0 Tasks
 
-- [ ] 3.1 Verify task 1.0 landed (`beginAction` exists in `ui_server.go` — plan 018's STOP condition otherwise); run plan 018's drift check; create branch `advisor/018-tui-watch-robustness`
-- [ ] 3.2 Extract exported `pumpText(stream, onText)` in `client.ts` with `TextDecoder` `{stream: true}` + final flush; use it for both stdout and stderr; add the split-emoji chunk test (Step 1)
-- [ ] 3.3 Buffer up to 20 pre-listener events in `DevspaceClient`, replay to the first listener only; add buffering/no-replay tests (Step 2)
-- [ ] 3.4 Add `busyRef` synchronous double-fire guard in `app.tsx`; make the reducer ignore unknown event types and set `watchAlive: true` on `watch-refresh`; add both reducer tests (Step 3)
-- [ ] 3.5 ui-server: `watchEnded(reason)` emits a `watch-error` event on every watcher exit path (closed channels, unexpected result, give-up); `watchDown atomic.Bool` + CompareAndSwap restart after successful `scan`/`refresh`; add `TestUIServerWatchClosedEmitsEvent` and `TestUIServerScanRestartsDeadWatcher` (Step 4)
-- [ ] 3.6 Port backoff/give-up to `dashboardModel` using the shared `watchRetry*` constants, delayed re-arm command, `watchRetryBase` test seam, reset on success; add backoff/give-up/reset tests (Step 5)
-- [ ] 3.7 Move `cell()` to new `tui/src/text.ts` using `Bun.stringWidth` (measure, truncate by code points, manual pad); update `app.tsx` import; add `tui/test/text.test.ts` (ASCII, emoji, CJK width-10 case) (Step 6)
-- [ ] 3.8 Run gates (`make verify`, `make tui-verify`, race-enabled Go selection), write proof file `09-proofs/09-task-03-proofs.md`, flip plan 018's row in `plans/README.md`, commit
+- [x] 3.1 Verify task 1.0 landed (`beginAction` exists in `ui_server.go` — plan 018's STOP condition otherwise); run plan 018's drift check; create branch `advisor/018-tui-watch-robustness`
+- [x] 3.2 Extract exported `pumpText(stream, onText)` in `client.ts` with `TextDecoder` `{stream: true}` + final flush; use it for both stdout and stderr; add the split-emoji chunk test (Step 1)
+- [x] 3.3 Buffer up to 20 pre-listener events in `DevspaceClient`, replay to the first listener only; add buffering/no-replay tests (Step 2)
+- [x] 3.4 Add `busyRef` synchronous double-fire guard in `app.tsx`; make the reducer ignore unknown event types and set `watchAlive: true` on `watch-refresh`; add both reducer tests (Step 3)
+- [x] 3.5 ui-server: `watchEnded(reason)` emits a `watch-error` event on every watcher exit path (closed channels, unexpected result, give-up); `watchDown atomic.Bool` + CompareAndSwap restart after successful `scan`/`refresh`; add `TestUIServerWatchClosedEmitsEvent` and `TestUIServerScanRestartsDeadWatcher` (Step 4)
+- [x] 3.6 Port backoff/give-up to `dashboardModel` using the shared `watchRetry*` constants, delayed re-arm command, `watchRetryBase` test seam, reset on success; add backoff/give-up/reset tests (Step 5)
+- [x] 3.7 Move `cell()` to new `tui/src/text.ts` using `Bun.stringWidth` (measure, truncate by code points, manual pad); update `app.tsx` import; add `tui/test/text.test.ts` (ASCII, emoji, CJK width-10 case) (Step 6)
+- [x] 3.8 Run gates (`make verify`, `make tui-verify`, race-enabled Go selection), write proof file `09-proofs/09-task-03-proofs.md`, flip plan 018's row in `plans/README.md`, commit
 
-### [ ] 4.0 Ship `devspace tui install`: version-matched, token-aware, checksum-verified companion install (plan 019)
+### [~] 4.0 Ship `devspace tui install`: version-matched, token-aware, checksum-verified companion install (plan 019)
 
 #### 4.0 Proof Artifact(s)
 

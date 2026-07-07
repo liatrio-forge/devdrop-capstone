@@ -3,6 +3,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import type { DevspaceClient } from "./client";
 import { helloProblem, type Hello, type ProjectRow, type Snapshot } from "./protocol";
 import { initialState, reduce, type DashboardState } from "./state";
+import { cell } from "./text";
 import { themes, type Theme } from "./theme";
 import { ConfirmApply, HelpOverlay, Palette, PlanOverlay, paletteCommands, planVisibleLines, runPaletteCommand } from "./overlays";
 
@@ -27,6 +28,7 @@ export function App({ client, quit }: AppProps) {
   const heightRef = useRef(height);
   heightRef.current = height;
   const toastSeq = useRef(1);
+  const busyRef = useRef(false);
 
   function addToast(tone: "ok" | "error", text: string) {
     const id = toastSeq.current++;
@@ -42,16 +44,18 @@ export function App({ client, quit }: AppProps) {
   }
 
   function runAction(method: ActionMethod, ref?: string) {
-    if (stateRef.current.busy) {
+    if (busyRef.current || stateRef.current.busy) {
       addToast("error", "busy; wait for the current operation");
       return;
     }
     const label = method === "apply" ? "apply-safe" : method;
+    busyRef.current = true;
     dispatch({ type: "action-start", label });
     const req: Promise<Snapshot> =
       method === "hydrate" ? client.request("hydrate", { ref: ref ?? "" }) : client.request(method);
     req.then(
       (snapshot) => {
+        busyRef.current = false;
         dispatch({ type: "snapshot", label, snapshot });
         addToast("ok", `${label} complete`);
         if (method === "plan" && snapshot.plan) {
@@ -60,6 +64,7 @@ export function App({ client, quit }: AppProps) {
         refreshStatus();
       },
       (err: Error) => {
+        busyRef.current = false;
         dispatch({ type: "action-error", label, message: err.message });
         addToast("error", `${label} failed`);
       },
@@ -424,9 +429,4 @@ function StatusBar({ th, state, hello }: { th: Theme; state: DashboardState; hel
       <text fg={th.muted}>j/k move · s scan · p plan · a apply · h hydrate · ctrl+k palette · ? help · q quit</text>
     </box>
   );
-}
-
-export function cell(value: string, width: number): string {
-  const truncated = value.length > width - 1 ? value.slice(0, Math.max(1, width - 2)) + "…" : value;
-  return truncated.padEnd(width);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DevspaceClient, type ClientTransport } from "../src/client";
+import { DevspaceClient, pumpText, type ClientTransport } from "../src/client";
 import type { ServerEvent } from "../src/protocol";
 
 function pair(requestTimeoutMs?: number): { client: DevspaceClient; sent: string[] } {
@@ -12,6 +12,19 @@ function pair(requestTimeoutMs?: number): { client: DevspaceClient; sent: string
 }
 
 describe("DevspaceClient", () => {
+  test("pumpText preserves UTF-8 split across chunks", async () => {
+    const bytes = new TextEncoder().encode(`{"id":1,"result":"🚀"}\n`);
+    const split = bytes.indexOf(0xf0) + 3;
+    let text = "";
+    async function* chunks() {
+      yield bytes.slice(0, split);
+      yield bytes.slice(split);
+    }
+    await pumpText(chunks(), (chunk) => (text += chunk));
+    expect(text).toContain("🚀");
+    expect(text).not.toContain("�");
+  });
+
   test("matches responses to requests by id", async () => {
     const { client, sent } = pair();
     const hello = client.request("hello");
@@ -56,6 +69,19 @@ describe("DevspaceClient", () => {
     off();
     client.feed(`{"method":"event","params":{"type":"watch-error","message":"again"}}\n`);
     expect(events).toHaveLength(1);
+  });
+
+  test("buffers events until the first listener attaches", () => {
+    const { client } = pair();
+    client.feed(`{"method":"event","params":{"type":"watch-error","message":"early"}}\n`);
+
+    const first: ServerEvent[] = [];
+    client.onEvent((ev) => first.push(ev));
+    expect(first).toEqual([{ type: "watch-error", message: "early" }]);
+
+    const second: ServerEvent[] = [];
+    client.onEvent((ev) => second.push(ev));
+    expect(second).toEqual([]);
   });
 
   test("rejects all in-flight requests when the server exits", async () => {

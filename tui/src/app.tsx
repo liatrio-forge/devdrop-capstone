@@ -5,7 +5,7 @@ import { helloProblem, type Hello, type ProjectRow, type Snapshot } from "./prot
 import { initialState, reduce, type DashboardState } from "./state";
 import { cell } from "./text";
 import { themes, type Theme } from "./theme";
-import { ConfirmApply, HelpOverlay, Palette, PlanOverlay, paletteCommands, planVisibleLines, runPaletteCommand } from "./overlays";
+import { ConfirmApply, HelpOverlay, Palette, PlanOverlay, WorkspaceOverlay, paletteCommands, planVisibleLines, runPaletteCommand } from "./overlays";
 
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -40,6 +40,13 @@ export function App({ client, quit }: AppProps) {
     client.request("status").then(
       (status) => dispatch({ type: "status", status }),
       () => {},
+    );
+  }
+
+  function openWorkspace() {
+    client.request("workspace").then(
+      (overview) => dispatch({ type: "overlay", overlay: { kind: "workspace", overview } }),
+      (err: Error) => addToast("error", `workspace failed: ${err.message}`),
     );
   }
 
@@ -107,6 +114,9 @@ export function App({ client, quit }: AppProps) {
       if (overlay.kind === "help" && (key.name === "q" || key.name === "?")) {
         return dispatch({ type: "overlay", overlay: { kind: "none" } });
       }
+      if (overlay.kind === "workspace" && key.name === "q") {
+        return dispatch({ type: "overlay", overlay: { kind: "none" } });
+      }
       if (overlay.kind === "plan") {
         const totalLines = (overlay.plan.actions?.length ?? 0) + (overlay.plan.warnings?.length ?? 0);
         const max = Math.max(0, totalLines - planVisibleLines(heightRef.current));
@@ -146,6 +156,7 @@ export function App({ client, quit }: AppProps) {
             runPaletteCommand(command.id, {
               runAction,
               selectedRow: s.rows[s.selected],
+              openWorkspace,
               openHelp: () => dispatch({ type: "overlay", overlay: { kind: "help" } }),
               openPlan: () =>
                 s.lastPlan && dispatch({ type: "overlay", overlay: { kind: "plan", plan: s.lastPlan, scroll: 0 } }),
@@ -176,6 +187,8 @@ export function App({ client, quit }: AppProps) {
         return dispatch({ type: "select", index: key.shift ? s.rows.length - 1 : 0 });
       case "r":
         return runAction("refresh");
+      case "w":
+        return openWorkspace();
       case "s":
         return runAction("scan");
       case "p":
@@ -201,6 +214,8 @@ export function App({ client, quit }: AppProps) {
       <Header th={th} hello={hello} state={state} />
       {state.overlay.kind === "help" ? (
         <HelpOverlay {...overlayProps} />
+      ) : state.overlay.kind === "workspace" ? (
+        <WorkspaceOverlay {...overlayProps} overview={state.overlay.overview} />
       ) : state.overlay.kind === "plan" ? (
         <PlanOverlay {...overlayProps} overlay={state.overlay} />
       ) : state.overlay.kind === "confirm-apply" ? (
@@ -426,7 +441,7 @@ function StatusBar({ th, state, hello }: { th: Theme; state: DashboardState; hel
         )}
         <span fg={state.watchAlive && hello?.watch !== false ? th.ok : th.muted}>  {watch}</span>
       </text>
-      <text fg={th.muted}>j/k move · s scan · p plan · a apply · h hydrate · ctrl+k palette · ? help · q quit</text>
+      <text fg={th.muted}>j/k move · w workspace · s scan · p plan · a apply · h hydrate · ctrl+k palette · ? help · q quit</text>
     </box>
   );
 }

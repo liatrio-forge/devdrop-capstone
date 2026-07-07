@@ -44,6 +44,69 @@ export interface SyncStatus {
   unavailableReason?: string;
 }
 
+export interface Machine {
+  id: string;
+  name: string;
+  os: string;
+  arch: string;
+  workspaceRoot: string;
+  lastSeenAt: string;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  ageRecipient: string;
+  status?: string;
+  createdAt: string;
+  revokedAt?: string;
+}
+
+export interface TeamMember {
+  userId: string;
+  role: string;
+  addedAt: string;
+  revokedAt?: string;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  members?: TeamMember[];
+  createdAt: string;
+}
+
+export interface WorkspaceOverviewSync {
+  manifestRemote?: string;
+  hostedEndpoint?: string;
+  lastSyncAt?: string;
+  lastScanAt?: string;
+}
+
+export interface WorkspaceStatusReport {
+  machine: string;
+  workspace: string;
+  projectsTracked: number;
+  hydrated: number;
+  placeholders: number;
+  dirty: number;
+  missingEnv: number;
+  outdated: number;
+  lastSyncAt?: string;
+  lastScanAt?: string;
+}
+
+export interface WorkspaceOverview {
+  workspaceRoot: string;
+  manifestVersion: number;
+  thisMachine: string;
+  machines: Machine[];
+  users?: User[];
+  teams?: Team[];
+  sync: WorkspaceOverviewSync;
+  summary: WorkspaceStatusReport;
+}
+
 export interface PlanAction {
   safety: "safe" | "skipped" | string;
   kind: string;
@@ -181,6 +244,70 @@ function isWatchRefresh(v: unknown): v is WatchRefresh {
   );
 }
 
+function isMachine(v: unknown): v is Machine {
+  return (
+    isRecord(v) &&
+    typeof v.id === "string" &&
+    typeof v.name === "string" &&
+    typeof v.os === "string" &&
+    typeof v.arch === "string" &&
+    typeof v.workspaceRoot === "string" &&
+    typeof v.lastSeenAt === "string"
+  );
+}
+
+function isUser(v: unknown): v is User {
+  return (
+    isRecord(v) &&
+    typeof v.id === "string" &&
+    typeof v.name === "string" &&
+    typeof v.ageRecipient === "string" &&
+    optionalString(v, "status") &&
+    typeof v.createdAt === "string" &&
+    optionalString(v, "revokedAt")
+  );
+}
+
+function isTeamMember(v: unknown): v is TeamMember {
+  return (
+    isRecord(v) &&
+    typeof v.userId === "string" &&
+    typeof v.role === "string" &&
+    typeof v.addedAt === "string" &&
+    optionalString(v, "revokedAt")
+  );
+}
+
+function isTeam(v: unknown): v is Team {
+  return (
+    isRecord(v) &&
+    typeof v.id === "string" &&
+    typeof v.name === "string" &&
+    (v.members === undefined || (Array.isArray(v.members) && v.members.every(isTeamMember))) &&
+    typeof v.createdAt === "string"
+  );
+}
+
+function isWorkspaceOverviewSync(v: unknown): v is WorkspaceOverviewSync {
+  return isRecord(v) && optionalString(v, "manifestRemote") && optionalString(v, "hostedEndpoint") && optionalString(v, "lastSyncAt") && optionalString(v, "lastScanAt");
+}
+
+function isWorkspaceStatusReport(v: unknown): v is WorkspaceStatusReport {
+  return (
+    isRecord(v) &&
+    typeof v.machine === "string" &&
+    typeof v.workspace === "string" &&
+    typeof v.projectsTracked === "number" &&
+    typeof v.hydrated === "number" &&
+    typeof v.placeholders === "number" &&
+    typeof v.dirty === "number" &&
+    typeof v.missingEnv === "number" &&
+    typeof v.outdated === "number" &&
+    optionalString(v, "lastSyncAt") &&
+    optionalString(v, "lastScanAt")
+  );
+}
+
 export function isHello(v: unknown): v is Hello {
   return (
     isRecord(v) &&
@@ -221,6 +348,21 @@ export function isSyncStatus(v: unknown): v is SyncStatus {
   );
 }
 
+export function isWorkspaceOverview(v: unknown): v is WorkspaceOverview {
+  return (
+    isRecord(v) &&
+    typeof v.workspaceRoot === "string" &&
+    typeof v.manifestVersion === "number" &&
+    typeof v.thisMachine === "string" &&
+    Array.isArray(v.machines) &&
+    v.machines.every(isMachine) &&
+    (v.users === undefined || (Array.isArray(v.users) && v.users.every(isUser))) &&
+    (v.teams === undefined || (Array.isArray(v.teams) && v.teams.every(isTeam))) &&
+    isWorkspaceOverviewSync(v.sync) &&
+    isWorkspaceStatusReport(v.summary)
+  );
+}
+
 export function isServerEvent(v: unknown): v is ServerEvent {
   if (!isRecord(v) || typeof v.type !== "string") return false;
   if (v.type === "watch-error") return typeof v.message === "string";
@@ -243,6 +385,7 @@ export interface RequestMap {
   apply: { params?: undefined; result: Snapshot };
   hydrate: { params: { ref: string }; result: Snapshot };
   status: { params?: undefined; result: SyncStatus };
+  workspace: { params?: undefined; result: WorkspaceOverview };
   lastPlan: { params?: undefined; result: Plan };
 }
 

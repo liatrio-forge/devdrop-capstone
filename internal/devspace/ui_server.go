@@ -239,6 +239,8 @@ func (s *uiServer) handle(req uiServerRequest) (any, error) {
 			return nil, err
 		}
 		return uiSnapshot{Rows: uiRows(rows), Summary: uiSummary(summary)}, nil
+	case "workspace":
+		return buildWorkspaceOverview()
 	case "scan":
 		if err := s.beginAction("scan"); err != nil {
 			return nil, err

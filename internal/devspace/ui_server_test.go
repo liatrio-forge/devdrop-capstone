@@ -550,6 +550,49 @@ func TestUIServerReadsNotBlockedBySlowAction(t *testing.T) {
 	closeUIServerForTest(t, inW, done)
 }
 
+func TestUIServerWorkspaceReadNotBlockedBySlowAction(t *testing.T) {
+	dashboardSeedWorkspace(t)
+
+	started := make(chan struct{})
+	unblock := make(chan struct{})
+	opts := uiServerOptions{
+		NoWatch: true,
+		hydrateCmd: func(string) tea.Cmd {
+			return func() tea.Msg {
+				close(started)
+				<-unblock
+				return actionResultMsg{label: "hydrate"}
+			}
+		},
+	}
+	dec, inW, done := startUIServerForTest(t, opts)
+
+	writeUIServerRequest(t, inW, `{"id":1,"method":"hydrate","params":{"ref":"apps/api"}}`)
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("hydrate did not start")
+	}
+	writeUIServerRequest(t, inW, `{"id":2,"method":"workspace"}`)
+
+	workspace := readUIServerMessage(t, dec)
+	if workspace["id"] != float64(2) {
+		t.Fatalf("first response id = %v, want 2: %+v", workspace["id"], workspace)
+	}
+	result := uiResponseResult(t, workspace)
+	if result["workspaceRoot"] == "" {
+		t.Fatalf("workspace result = %+v", result)
+	}
+
+	close(unblock)
+	hydrate := readUIServerMessage(t, dec)
+	if hydrate["id"] != float64(1) {
+		t.Fatalf("second response id = %v, want 1: %+v", hydrate["id"], hydrate)
+	}
+	uiResponseResult(t, hydrate)
+	closeUIServerForTest(t, inW, done)
+}
+
 func TestUIServerRejectsConcurrentActions(t *testing.T) {
 	dashboardSeedWorkspace(t)
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { PROTOCOL_VERSION, helloProblem, isHello, isServerEvent, isSnapshot, isSyncStatus } from "../src/protocol";
+import { PROTOCOL_VERSION, helloProblem, isHello, isServerEvent, isSnapshot, isSyncStatus, isWorkspaceOverview } from "../src/protocol";
 
 function fixture(name: string): Promise<unknown> {
   return Bun.file(new URL(`./fixtures/${name}`, import.meta.url)).json();
@@ -28,6 +28,10 @@ describe("protocol fixtures", () => {
     expect(isSyncStatus(await fixture("sync-status.json"))).toBe(true);
   });
 
+  test("workspace overview matches the client contract", async () => {
+    expect(isWorkspaceOverview(await fixture("workspace.json"))).toBe(true);
+  });
+
   test("watch events match the reducer contract", async () => {
     for (const name of ["event-watch-refresh.json", "event-watch-error.json"]) {
       const event = await fixture(name);
@@ -47,6 +51,13 @@ describe("protocol fixtures", () => {
     const broken = { ...hello };
     delete broken.workspaceRoot;
     expect(isHello(broken)).toBe(false);
+  });
+
+  test("workspace overview rejects missing required fields", async () => {
+    const workspace = (await fixture("workspace.json")) as Record<string, unknown>;
+    const broken = { ...workspace };
+    delete broken.summary;
+    expect(isWorkspaceOverview(broken)).toBe(false);
   });
 
   test("helloProblem explains version skew", async () => {

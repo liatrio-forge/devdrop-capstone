@@ -102,7 +102,7 @@ This repository is being prepared as a Liatrio Forge Module 5 capstone. See [`do
 
 ## Supported Commands
 
-Output is styled (color, headers, tables) when stdout is a terminal, and automatically falls back to plain text when piped, redirected, or when `NO_COLOR`/`CLICOLOR_FORCE=0` is set. Pass the persistent `--no-color` flag to force plain output on any command regardless of terminal capability. Commands that support `--json` (`status`, `doctor`, `project`, `workspace diff`, `mount --preview`, `plan`, `setup plan`) always emit clean JSON with no ANSI content.
+Output is styled (color, headers, tables) when stdout is a terminal, and automatically falls back to plain text when piped, redirected, or when `NO_COLOR`/`CLICOLOR_FORCE=0` is set. Pass the persistent `--no-color` flag to force plain output on any command regardless of terminal capability. Commands that support `--json` (`status`, `doctor`, `project`, `workspace`, `workspace diff`, `mount --preview`, `plan`, `setup plan`) always emit clean JSON with no ANSI content.
 
 ### Core Workflow
 
@@ -183,6 +183,15 @@ devspace project --json
 ```
 
 Lists tracked projects from the saved manifest and state. The default table shows name, relative path, type, hydration status, dirty flag, branch, and env-file presence. `--json` prints the same saved project list as stable machine-readable rows with each manifest project and its current saved state. Run `devspace scan` first when you want refreshed metadata.
+
+#### `devspace workspace`
+
+```bash
+devspace workspace
+devspace workspace --json
+```
+
+Shows the saved workspace overview: machines, users, teams, sync configuration, last scan/sync timestamps, and project summary counts. Manifest remotes are redacted before display. `--json` prints the same overview as stable machine-readable data.
 
 #### `devspace project add`
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Plan, PlanAction, ProjectRow } from "./protocol";
+import type { Plan, PlanAction, ProjectRow, WorkspaceOverview } from "./protocol";
 import type { DashboardState, Overlay } from "./state";
 import type { Theme } from "./theme";
 
@@ -36,6 +36,7 @@ const KEYMAP: Array<[string, string]> = [
   ["j / k / ↑ / ↓", "move selection"],
   ["g / G", "first / last project"],
   ["r", "refresh workspace state"],
+  ["w", "workspace overview"],
   ["s", "scan workspace"],
   ["p", "build plan (opens plan view)"],
   ["a", "apply safe actions (confirms first)"],
@@ -139,6 +140,45 @@ export function ConfirmApply({ th, plan }: { th: Theme; plan: Plan; width: numbe
   );
 }
 
+export function WorkspaceOverlay({ th, overview }: { th: Theme; overview: WorkspaceOverview; width: number; height: number }) {
+  const users = overview.users?.map((u) => u.name).join(", ") || "-";
+  const teams = overview.teams?.map((t) => t.name).join(", ") || "-";
+  return (
+    <OverlayFrame th={th} title="Workspace">
+      <text fg={th.text}>Root: {overview.workspaceRoot || "-"}</text>
+      <text fg={th.text}>Manifest version: {overview.manifestVersion}</text>
+      <text fg={th.text}>This machine: {overview.thisMachine || "-"}</text>
+      <text> </text>
+      <text fg={th.accent}>Machines</text>
+      {overview.machines.length === 0 ? (
+        <text fg={th.muted}>none</text>
+      ) : (
+        overview.machines.map((m) => (
+          <text key={m.id}>
+            <span fg={th.text}>{m.name || "-"}</span>
+            <span fg={th.muted}>{`  ${m.id || "-"}  ${m.lastSeenAt || "-"}`}</span>
+          </text>
+        ))
+      )}
+      <text> </text>
+      <text fg={th.text}>Users: {users}</text>
+      <text fg={th.text}>Teams: {teams}</text>
+      <text> </text>
+      <text fg={th.accent}>Sync</text>
+      <text fg={th.muted}>manifest remote {overview.sync.manifestRemote || "-"}</text>
+      <text fg={th.muted}>hosted endpoint {overview.sync.hostedEndpoint || "-"}</text>
+      <text fg={th.muted}>last sync {overview.sync.lastSyncAt || "-"}</text>
+      <text fg={th.muted}>last scan {overview.sync.lastScanAt || "-"}</text>
+      <text> </text>
+      <text>
+        <span fg={th.text}>projects {overview.summary.projectsTracked}</span>
+        <span fg={th.muted}>{` hydrated ${overview.summary.hydrated} placeholders ${overview.summary.placeholders} dirty ${overview.summary.dirty} missing env ${overview.summary.missingEnv} outdated ${overview.summary.outdated}`}</span>
+      </text>
+      <text fg={th.muted}>esc/q close</text>
+    </OverlayFrame>
+  );
+}
+
 export interface PaletteCommand {
   id: string;
   label: string;
@@ -149,6 +189,7 @@ export function paletteCommands(state: DashboardState, query: string): PaletteCo
   const selected = state.rows[state.selected];
   const commands: PaletteCommand[] = [
     { id: "refresh", label: "Refresh workspace", hint: "r" },
+    { id: "workspace", label: "Workspace overview", hint: "w" },
     { id: "scan", label: "Scan workspace", hint: "s" },
     { id: "plan", label: "Build plan", hint: "p" },
     { id: "apply", label: "Apply safe actions", hint: "a" },
@@ -178,6 +219,7 @@ export function runPaletteCommand(
   ctx: {
     runAction: (method: "scan" | "refresh" | "plan" | "apply" | "hydrate", ref?: string) => void;
     selectedRow?: ProjectRow;
+    openWorkspace: () => void;
     openHelp: () => void;
     openPlan: () => void;
     cycleTheme: () => void;
@@ -193,6 +235,8 @@ export function runPaletteCommand(
     case "hydrate":
       if (ctx.selectedRow) ctx.runAction("hydrate", ctx.selectedRow.ref);
       return;
+    case "workspace":
+      return ctx.openWorkspace();
     case "show-plan":
       return ctx.openPlan();
     case "theme":

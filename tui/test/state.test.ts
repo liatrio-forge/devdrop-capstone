@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { EVENT_LIMIT, initialState, reduce, type DashboardState } from "../src/state";
-import type { ProjectRow, ScanSummary, ServerEvent, Snapshot } from "../src/protocol";
+import type { ProjectRow, ScanSummary, ServerEvent, Snapshot, WorkspaceOverview } from "../src/protocol";
 
 const summary: ScanSummary = { foundProjects: 2, gitRepos: 1, untrackedFolders: 0, localOnlyProjects: 1, projectsWithEnv: 1 };
 
@@ -10,6 +10,15 @@ const rows: ProjectRow[] = [
 ];
 
 const snapshot: Snapshot = { rows, summary };
+
+const workspace: WorkspaceOverview = {
+  workspaceRoot: "/w",
+  manifestVersion: 1,
+  thisMachine: "laptop (m1)",
+  machines: [{ id: "m1", name: "laptop", os: "darwin", arch: "arm64", workspaceRoot: "/w", lastSeenAt: "now" }],
+  sync: { manifestRemote: "https://redacted@example.invalid/org/ws.git", lastSyncAt: "now" },
+  summary: { machine: "laptop", workspace: "/w", projectsTracked: 2, hydrated: 1, placeholders: 1, dirty: 0, missingEnv: 1, outdated: 0 },
+};
 
 describe("reduce", () => {
   test("snapshot clears busy/error, logs event, keeps lastPlan", () => {
@@ -95,5 +104,12 @@ describe("reduce", () => {
     expect(state.toasts.map((t) => t.id)).toEqual([2, 3, 4]);
     state = reduce(state, { type: "toast-expire", id: 3 });
     expect(state.toasts.map((t) => t.id)).toEqual([2, 4]);
+  });
+
+  test("workspace overlay opens and closes", () => {
+    const open = reduce(initialState, { type: "overlay", overlay: { kind: "workspace", overview: workspace } });
+    expect(open.overlay.kind).toBe("workspace");
+    const closed = reduce(open, { type: "overlay", overlay: { kind: "none" } });
+    expect(closed.overlay.kind).toBe("none");
   });
 });

@@ -1,0 +1,64 @@
+{
+  "workspaceRoot": "/ws",
+  "manifestVersion": 1,
+  "thisMachine": "mach (m-1)",
+  "machines": [
+    {
+      "id": "m-1",
+      "name": "mach",
+      "os": "darwin",
+      "arch": "arm64",
+      "workspaceRoot": "/ws",
+      "lastSeenAt": "2026-07-07T12:00:00Z"
+    },
+    {
+      "id": "m-2",
+      "name": "tower",
+      "os": "linux",
+      "arch": "amd64",
+      "workspaceRoot": "/home/me/ws",
+      "lastSeenAt": "2026-07-06T12:00:00Z"
+    }
+  ],
+  "users": [
+    {
+      "id": "u-1",
+      "name": "Ada",
+      "ageRecipient": "age1lydx38xc73yjmwfvqfpd2peulfwftx7tv7x4lw6p2gh594h2wyrqx70a4q",
+      "status": "active",
+      "createdAt": "2026-07-01T00:00:00Z"
+    }
+  ],
+  "teams": [
+    {
+      "id": "t-1",
+      "name": "Core",
+      "members": [
+        {
+          "userId": "u-1",
+          "role": "owner",
+          "addedAt": "2026-07-01T00:00:00Z"
+        }
+      ],
+      "createdAt": "2026-07-01T00:00:00Z"
+    }
+  ],
+  "sync": {
+    "manifestRemote": "https://redacted@example.invalid/org/manifest.git",
+    "hostedEndpoint": "https://hosted.example.invalid",
+    "lastSyncAt": "2026-07-07T12:00:00Z",
+    "lastScanAt": "2026-07-07T12:30:00Z"
+  },
+  "summary": {
+    "machine": "mach",
+    "workspace": "/ws",
+    "projectsTracked": 2,
+    "hydrated": 1,
+    "placeholders": 1,
+    "dirty": 1,
+    "missingEnv": 1,
+    "outdated": 1,
+    "lastSyncAt": "2026-07-07T12:00:00Z",
+    "lastScanAt": "2026-07-07T12:30:00Z"
+  }
+}

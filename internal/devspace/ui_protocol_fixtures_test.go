@@ -62,6 +62,39 @@ func TestUIProtocolFixtures(t *testing.T) {
 			GitDiffUnavailable: "git unavailable",
 			UnavailableReason:  "network",
 		},
+		"workspace.json": WorkspaceOverview{
+			WorkspaceRoot:   "/ws",
+			ManifestVersion: ManifestVersion,
+			ThisMachine:     "mach (m-1)",
+			Machines: []Machine{
+				{ID: "m-1", Name: "mach", OS: "darwin", Arch: "arm64", WorkspaceRoot: "/ws", LastSeenAt: "2026-07-07T12:00:00Z"},
+				{ID: "m-2", Name: "tower", OS: "linux", Arch: "amd64", WorkspaceRoot: "/home/me/ws", LastSeenAt: "2026-07-06T12:00:00Z"},
+			},
+			Users: []User{
+				{ID: "u-1", Name: "Ada", AgeRecipient: "age1lydx38xc73yjmwfvqfpd2peulfwftx7tv7x4lw6p2gh594h2wyrqx70a4q", Status: "active", CreatedAt: "2026-07-01T00:00:00Z"},
+			},
+			Teams: []Team{
+				{ID: "t-1", Name: "Core", Members: []TeamMember{{UserID: "u-1", Role: AccessRoleOwner, AddedAt: "2026-07-01T00:00:00Z"}}, CreatedAt: "2026-07-01T00:00:00Z"},
+			},
+			Sync: WorkspaceOverviewSync{
+				ManifestRemote: "https://redacted@example.invalid/org/manifest.git",
+				HostedEndpoint: "https://hosted.example.invalid",
+				LastSyncAt:     "2026-07-07T12:00:00Z",
+				LastScanAt:     "2026-07-07T12:30:00Z",
+			},
+			Summary: WorkspaceStatusReport{
+				Machine:         "mach",
+				Workspace:       "/ws",
+				ProjectsTracked: 2,
+				Hydrated:        1,
+				Placeholders:    1,
+				Dirty:           1,
+				MissingEnv:      1,
+				Outdated:        1,
+				LastSyncAt:      "2026-07-07T12:00:00Z",
+				LastScanAt:      "2026-07-07T12:30:00Z",
+			},
+		},
 		"event-watch-refresh.json": uiServerEvent{
 			Method: "event",
 			Params: map[string]any{

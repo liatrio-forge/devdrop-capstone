@@ -1,4 +1,4 @@
-import type { Plan, ProjectRow, ScanSummary, ServerEvent, Snapshot, SyncStatus } from "./protocol";
+import type { Plan, ProjectRow, ScanSummary, ServerEvent, Snapshot, SyncStatus, WorkspaceOverview } from "./protocol";
 
 export const EVENT_LIMIT = 50;
 
@@ -7,6 +7,7 @@ export type Overlay =
   | { kind: "help" }
   | { kind: "palette"; query: string; selected: number }
   | { kind: "plan"; plan: Plan; scroll: number }
+  | { kind: "workspace"; overview: WorkspaceOverview }
   | { kind: "confirm-apply"; plan: Plan };
 
 export interface Toast {

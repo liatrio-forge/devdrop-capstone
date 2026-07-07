@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -45,7 +46,11 @@ type dashboardModel struct {
 	width         int
 	height        int
 
+	statusCache     *syncStatusCache
 	watchCmdFactory func(string) tea.Cmd
+	watchErrCount   int
+	watchBackoff    time.Duration
+	watchRetryBase  time.Duration
 }
 
 type dashboardSyncStatus struct {
@@ -102,7 +107,9 @@ func newDashboardModel(noWatch bool) dashboardModel {
 	model := dashboardModel{
 		noWatch:         noWatch,
 		syncMode:        WatchSyncOff,
+		statusCache:     newSyncStatusCache(dashboardSyncStatusCmd()),
 		watchCmdFactory: dashboardWatchCmd,
+		watchRetryBase:  watchRetryDefaultBase,
 	}
 	cfg, err := LoadConfig()
 	if err == nil {
@@ -121,9 +128,9 @@ func newDashboardModel(noWatch bool) dashboardModel {
 
 func (m dashboardModel) Init() tea.Cmd {
 	if m.noWatch {
-		return tea.Batch(dashboardScanCmd(), dashboardSyncStatusCmd())
+		return tea.Batch(dashboardScanCmd(), m.syncStatusCmd())
 	}
-	return tea.Batch(dashboardScanCmd(), dashboardSyncStatusCmd(), m.nextWatchCmd())
+	return tea.Batch(dashboardScanCmd(), m.syncStatusCmd(), m.nextWatchCmd())
 }
 
 func (m dashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -142,7 +149,7 @@ func (m dashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.rows = msg.rows
 		m.summary = msg.summary
 		m.clampSelected()
-		return m, dashboardSyncStatusCmd()
+		return m, m.syncStatusCmd()
 	case actionResultMsg:
 		m.busy = false
 		if msg.err != nil {
@@ -154,16 +161,29 @@ func (m dashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.summary = msg.summary
 		m.prependEvent(fmt.Sprintf("%s complete", msg.label))
 		m.clampSelected()
-		return m, dashboardSyncStatusCmd()
+		return m, m.syncStatusCmd()
 	case watchRefreshMsg:
 		m.busy = false
 		if msg.err != nil {
+			m.watchErrCount++
 			m.errText = msg.err.Error()
 			if m.noWatch {
 				return m, nil
 			}
-			return m, m.nextWatchCmd()
+			if m.watchErrCount >= watchRetryMaxAttempts {
+				m.errText = fmt.Sprintf("watcher stopped after %d consecutive errors: %s", m.watchErrCount, msg.err)
+				return m, nil
+			}
+			m.watchBackoff = m.nextWatchBackoff()
+			next := m.nextWatchCmd()
+			delay := m.watchBackoff
+			return m, func() tea.Msg {
+				time.Sleep(delay)
+				return next()
+			}
 		}
+		m.watchErrCount = 0
+		m.watchBackoff = 0
 		m.errText = ""
 		m.rows = msg.rows
 		m.summary = msg.summary
@@ -172,7 +192,8 @@ func (m dashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.noWatch {
 			return m, nil
 		}
-		return m, m.nextWatchCmd()
+		next := m.nextWatchCmd()
+		return m, next
 	case syncStatusLoadedMsg:
 		m.syncStatus = msg.status
 		return m, nil
@@ -201,7 +222,7 @@ func (m dashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if cmd == nil {
 				return m, nil
 			}
-			return m, tea.Batch(cmd, dashboardSyncStatusCmd())
+			return m, tea.Batch(cmd, m.syncStatusCmd())
 		case "s":
 			return m.startAction("scan", dashboardScanCmd())
 		case "p":
@@ -293,7 +314,17 @@ func (m dashboardModel) startAction(label string, cmd tea.Cmd) (dashboardModel, 
 	}
 	m.busy = true
 	m.errText = ""
+	if m.statusCache != nil {
+		m.statusCache.invalidate()
+	}
 	return m, cmd
+}
+
+func (m dashboardModel) syncStatusCmd() tea.Cmd {
+	if m.statusCache == nil {
+		return dashboardSyncStatusCmd()
+	}
+	return m.statusCache.cmd()
 }
 
 func (m dashboardModel) nextWatchCmd() tea.Cmd {
@@ -302,6 +333,21 @@ func (m dashboardModel) nextWatchCmd() tea.Cmd {
 		factory = dashboardWatchCmd
 	}
 	return factory(m.syncMode)
+}
+
+func (m dashboardModel) nextWatchBackoff() time.Duration {
+	base := m.watchRetryBase
+	if base <= 0 {
+		base = watchRetryDefaultBase
+	}
+	if m.watchBackoff <= 0 {
+		return base
+	}
+	next := m.watchBackoff * 2
+	if next > watchRetryMaxBackoff {
+		return watchRetryMaxBackoff
+	}
+	return next
 }
 
 func (m *dashboardModel) clampSelected() {

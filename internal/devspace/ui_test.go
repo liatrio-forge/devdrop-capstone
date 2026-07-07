@@ -3,6 +3,7 @@ package devspace
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -104,6 +105,32 @@ func TestDashboardSyncStatusMessageUpdatesModel(t *testing.T) {
 	got := updated.(dashboardModel)
 	if got.syncStatus.LastSyncAt != status.LastSyncAt || !got.syncStatus.Configured {
 		t.Fatalf("syncStatus = %+v, want %+v", got.syncStatus, status)
+	}
+}
+
+func TestSyncStatusCacheCachesWithinTTLAndInvalidates(t *testing.T) {
+	calls := 0
+	cache := newSyncStatusCache(func() tea.Msg {
+		calls++
+		return syncStatusLoadedMsg{status: dashboardSyncStatus{LastSyncAt: fmt.Sprintf("call-%d", calls)}}
+	})
+
+	first := cache.cmd()().(syncStatusLoadedMsg)
+	second := cache.cmd()().(syncStatusLoadedMsg)
+	if calls != 1 {
+		t.Fatalf("fetch calls = %d, want 1", calls)
+	}
+	if second.status.LastSyncAt != first.status.LastSyncAt {
+		t.Fatalf("cached status = %+v, want %+v", second.status, first.status)
+	}
+
+	cache.invalidate()
+	third := cache.cmd()().(syncStatusLoadedMsg)
+	if calls != 2 {
+		t.Fatalf("fetch calls after invalidate = %d, want 2", calls)
+	}
+	if third.status.LastSyncAt == first.status.LastSyncAt {
+		t.Fatalf("status after invalidate = %+v, want fresh value", third.status)
 	}
 }
 
@@ -365,6 +392,54 @@ func TestDashboardWatchRefreshUpdatesModel(t *testing.T) {
 	}
 	if got.summary.FoundProjects != 2 || len(got.events) != 1 {
 		t.Fatalf("summary=%+v events=%+v", got.summary, got.events)
+	}
+}
+
+func TestDashboardWatchErrorRearmsWithBackoff(t *testing.T) {
+	model := dashboardModel{watchRetryBase: time.Nanosecond, watchCmdFactory: func(string) tea.Cmd {
+		return func() tea.Msg { return nil }
+	}}
+	updated, cmd := model.Update(watchRefreshMsg{err: errors.New("boom")})
+	got := updated.(dashboardModel)
+	if cmd == nil {
+		t.Fatal("watch error did not re-arm watcher")
+	}
+	if got.watchErrCount != 1 || got.watchBackoff != time.Nanosecond {
+		t.Fatalf("watchErrCount=%d watchBackoff=%s", got.watchErrCount, got.watchBackoff)
+	}
+}
+
+func TestDashboardWatchErrorStopsAfterMaxAttempts(t *testing.T) {
+	model := dashboardModel{watchRetryBase: time.Nanosecond, watchCmdFactory: func(string) tea.Cmd {
+		return func() tea.Msg { return nil }
+	}}
+	var cmd tea.Cmd
+	var updated tea.Model = model
+	for i := 0; i < watchRetryMaxAttempts; i++ {
+		updated, cmd = updated.(dashboardModel).Update(watchRefreshMsg{err: errors.New("boom")})
+	}
+	got := updated.(dashboardModel)
+	if cmd != nil {
+		t.Fatal("watcher re-armed after max attempts")
+	}
+	if !strings.Contains(got.errText, "watcher stopped after") {
+		t.Fatalf("errText = %q", got.errText)
+	}
+}
+
+func TestDashboardWatchSuccessResetsErrorCount(t *testing.T) {
+	model := dashboardModel{watchRetryBase: time.Nanosecond, watchCmdFactory: func(string) tea.Cmd {
+		return func() tea.Msg { return nil }
+	}}
+	updated, _ := model.Update(watchRefreshMsg{err: errors.New("boom")})
+	updated, _ = updated.(dashboardModel).Update(watchRefreshMsg{})
+	updated, cmd := updated.(dashboardModel).Update(watchRefreshMsg{err: errors.New("again")})
+	got := updated.(dashboardModel)
+	if cmd == nil {
+		t.Fatal("watcher did not re-arm after reset")
+	}
+	if got.watchErrCount != 1 {
+		t.Fatalf("watchErrCount = %d, want 1", got.watchErrCount)
 	}
 }
 

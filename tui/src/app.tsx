@@ -1,10 +1,11 @@
 import { useTerminalDimensions, useKeyboard } from "@opentui/react";
 import { useEffect, useReducer, useRef, useState } from "react";
 import type { DevspaceClient } from "./client";
-import type { Hello, ProjectRow, Snapshot } from "./protocol";
+import { helloProblem, type Hello, type ProjectRow, type Snapshot } from "./protocol";
 import { initialState, reduce, type DashboardState } from "./state";
+import { cell } from "./text";
 import { themes, type Theme } from "./theme";
-import { ConfirmApply, HelpOverlay, Palette, PlanOverlay, paletteCommands, planVisibleLines, runPaletteCommand } from "./overlays";
+import { ConfirmApply, HelpOverlay, Palette, PlanOverlay, WorkspaceOverlay, paletteCommands, planVisibleLines, runPaletteCommand } from "./overlays";
 
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -12,7 +13,7 @@ type ActionMethod = "scan" | "refresh" | "plan" | "apply" | "hydrate";
 
 export interface AppProps {
   client: DevspaceClient;
-  quit: () => void;
+  quit: (message?: string) => void;
 }
 
 export function App({ client, quit }: AppProps) {
@@ -27,6 +28,7 @@ export function App({ client, quit }: AppProps) {
   const heightRef = useRef(height);
   heightRef.current = height;
   const toastSeq = useRef(1);
+  const busyRef = useRef(false);
 
   function addToast(tone: "ok" | "error", text: string) {
     const id = toastSeq.current++;
@@ -41,17 +43,26 @@ export function App({ client, quit }: AppProps) {
     );
   }
 
+  function openWorkspace() {
+    client.request("workspace").then(
+      (overview) => dispatch({ type: "overlay", overlay: { kind: "workspace", overview } }),
+      (err: Error) => addToast("error", `workspace failed: ${err.message}`),
+    );
+  }
+
   function runAction(method: ActionMethod, ref?: string) {
-    if (stateRef.current.busy) {
+    if (busyRef.current || stateRef.current.busy) {
       addToast("error", "busy; wait for the current operation");
       return;
     }
     const label = method === "apply" ? "apply-safe" : method;
+    busyRef.current = true;
     dispatch({ type: "action-start", label });
     const req: Promise<Snapshot> =
       method === "hydrate" ? client.request("hydrate", { ref: ref ?? "" }) : client.request(method);
     req.then(
       (snapshot) => {
+        busyRef.current = false;
         dispatch({ type: "snapshot", label, snapshot });
         addToast("ok", `${label} complete`);
         if (method === "plan" && snapshot.plan) {
@@ -60,6 +71,7 @@ export function App({ client, quit }: AppProps) {
         refreshStatus();
       },
       (err: Error) => {
+        busyRef.current = false;
         dispatch({ type: "action-error", label, message: err.message });
         addToast("error", `${label} failed`);
       },
@@ -67,7 +79,17 @@ export function App({ client, quit }: AppProps) {
   }
 
   useEffect(() => {
-    client.request("hello").then(setHello, () => {});
+    client.request("hello").then(
+      (hello) => {
+        const problem = helloProblem(hello);
+        if (problem) {
+          quit(problem);
+          return;
+        }
+        setHello(hello);
+      },
+      (err: Error) => quit(`hello failed: ${err.message}`),
+    );
     runAction("scan");
     refreshStatus();
     const offEvent = client.onEvent((event) => {
@@ -90,6 +112,9 @@ export function App({ client, quit }: AppProps) {
     if (overlay.kind !== "none") {
       if (key.name === "escape") return dispatch({ type: "overlay", overlay: { kind: "none" } });
       if (overlay.kind === "help" && (key.name === "q" || key.name === "?")) {
+        return dispatch({ type: "overlay", overlay: { kind: "none" } });
+      }
+      if (overlay.kind === "workspace" && key.name === "q") {
         return dispatch({ type: "overlay", overlay: { kind: "none" } });
       }
       if (overlay.kind === "plan") {
@@ -131,6 +156,7 @@ export function App({ client, quit }: AppProps) {
             runPaletteCommand(command.id, {
               runAction,
               selectedRow: s.rows[s.selected],
+              openWorkspace,
               openHelp: () => dispatch({ type: "overlay", overlay: { kind: "help" } }),
               openPlan: () =>
                 s.lastPlan && dispatch({ type: "overlay", overlay: { kind: "plan", plan: s.lastPlan, scroll: 0 } }),
@@ -161,6 +187,8 @@ export function App({ client, quit }: AppProps) {
         return dispatch({ type: "select", index: key.shift ? s.rows.length - 1 : 0 });
       case "r":
         return runAction("refresh");
+      case "w":
+        return openWorkspace();
       case "s":
         return runAction("scan");
       case "p":
@@ -186,6 +214,8 @@ export function App({ client, quit }: AppProps) {
       <Header th={th} hello={hello} state={state} />
       {state.overlay.kind === "help" ? (
         <HelpOverlay {...overlayProps} />
+      ) : state.overlay.kind === "workspace" ? (
+        <WorkspaceOverlay {...overlayProps} overview={state.overlay.overview} />
       ) : state.overlay.kind === "plan" ? (
         <PlanOverlay {...overlayProps} overlay={state.overlay} />
       ) : state.overlay.kind === "confirm-apply" ? (
@@ -411,12 +441,7 @@ function StatusBar({ th, state, hello }: { th: Theme; state: DashboardState; hel
         )}
         <span fg={state.watchAlive && hello?.watch !== false ? th.ok : th.muted}>  {watch}</span>
       </text>
-      <text fg={th.muted}>j/k move · s scan · p plan · a apply · h hydrate · ctrl+k palette · ? help · q quit</text>
+      <text fg={th.muted}>j/k move · w workspace · s scan · p plan · a apply · h hydrate · ctrl+k palette · ? help · q quit</text>
     </box>
   );
-}
-
-export function cell(value: string, width: number): string {
-  const truncated = value.length > width - 1 ? value.slice(0, Math.max(1, width - 2)) + "…" : value;
-  return truncated.padEnd(width);
 }

@@ -39,6 +39,7 @@ func NewRootCommand(version string) *cobra.Command {
 	cmd.AddCommand(newWatchCommand())
 	cmd.AddCommand(newUICommand())
 	cmd.AddCommand(newUIServerCommand(version))
+	cmd.AddCommand(newTUICommand(version))
 	cmd.AddCommand(newPlanCommand())
 	cmd.AddCommand(newApplyCommand())
 	cmd.AddCommand(newWorkspaceCommand())
@@ -388,7 +389,24 @@ func isLoopbackBindHost(host string) bool {
 }
 
 func newWorkspaceCommand() *cobra.Command {
-	cmd := &cobra.Command{Use: "workspace", Short: "Manage workspace"}
+	var jsonOut bool
+	cmd := &cobra.Command{
+		Use:   "workspace",
+		Short: "Manage workspace",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			overview, err := buildWorkspaceOverview()
+			if err != nil {
+				return err
+			}
+			if jsonOut {
+				return writePrettyJSON(cmd.OutOrStdout(), overview)
+			}
+			printWorkspaceOverview(cmd.OutOrStdout(), overview)
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "print machine-readable workspace overview")
 	cmd.AddCommand(newScanCommand())
 	cmd.AddCommand(newWorkspaceRemoteCommand())
 	cmd.AddCommand(newWorkspaceReconcileCommand())
@@ -732,7 +750,24 @@ func newMountCommand() *cobra.Command {
 }
 
 func newProjectCommand() *cobra.Command {
-	cmd := &cobra.Command{Use: "project", Short: "Manage projects"}
+	var jsonOut bool
+	cmd := &cobra.Command{
+		Use:   "project",
+		Short: "Manage projects",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rows, err := buildProjectListRows()
+			if err != nil {
+				return err
+			}
+			if jsonOut {
+				return writePrettyJSON(cmd.OutOrStdout(), rows)
+			}
+			printProjectList(cmd.OutOrStdout(), rows)
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "print machine-readable project list")
 	cmd.AddCommand(&cobra.Command{
 		Use:   "add <relative-path>",
 		Short: "Track a project path",

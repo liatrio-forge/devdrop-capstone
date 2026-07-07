@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>10-tasks-project-listing</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff; --fg: #1a1a2e; --muted: #6b7280; --border: #e5e7eb;
+    --card: #f9fafb; --accent: #4f46e5; --pass: #059669; --fail: #dc2626; --warn: #d97706;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1117; --fg:#e6e6ef; --muted:#9ca3af; --border:#262a35; --card:#161922; --accent:#818cf8; --pass:#34d399; --fail:#f87171; --warn:#fbbf24; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height:1.6; }
+  .doc { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  header.doc-header { border-bottom: 1px solid var(--border); padding-bottom:1rem; margin-bottom:2rem; }
+  h1 { margin: .25rem 0; font-size:1.6rem; }
+  h2 { margin-top:2rem; border-bottom:1px solid var(--border); padding-bottom:.35rem; }
+  .meta { color:var(--muted); font-size:.9rem; }
+  .badge { display:inline-block; font-size:.72rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:.25rem .6rem; border-radius:999px; }
+  .badge-type { background:var(--accent); color:#fff; }
+  .status-pass, .status-done, .status-verified { background:var(--pass); color:#fff; }
+  .status-fail, .status-failed { background:var(--fail); color:#fff; }
+  .status-flag, .status-pending, .status-unknown, .status-in-progress { background:var(--warn); color:#111; }
+  table { width:100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { border:1px solid var(--border); padding:.5rem .75rem; text-align:left; vertical-align:top; }
+  th { background:var(--card); }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:.5rem; padding:1rem 1.25rem; margin:1rem 0; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  pre { background:var(--card); border:1px solid var(--border); border-radius:.5rem; padding:1rem; overflow-x:auto; }
+  .task-list { list-style:none; padding-left:0; }
+  .task { padding:.35rem 0; }
+  .task[data-status="done"] .task-label::before { content: "\2611 "; }
+  figure { margin: 1rem 0; }
+  figure img { max-width:100%; border:1px solid var(--border); border-radius:.5rem; }
+  figcaption { color:var(--muted); font-size:.85rem; margin-top:.35rem; }
+  .parent-task { border:1px solid var(--border); border-radius:.5rem; padding:1rem 1.25rem; margin:1.25rem 0; }
+  .parent-task > h3 { margin-top:0; }
+  .proof-artifacts ul { margin:.5rem 0; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <header class="doc-header">
+    <span class="badge badge-type">TASKS</span>
+    <h1>10-tasks-project-listing</h1>
+    <p class="meta">Sequence 10 · Feature: project-listing · Phase 2 · Sub-tasks generated</p>
+  </header>
+
+  <section id="relevant-files">
+    <h2>Relevant Files</h2>
+    <table>
+      <thead>
+        <tr><th>File</th><th>Why It Is Relevant</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>internal/devspace/commands.go</code></td><td>Defines the <code>project</code> Cobra command group, existing subcommands, and the new <code>--json</code> flag wiring.</td></tr>
+        <tr><td><code>internal/devspace/output.go</code></td><td>Holds command presentation helpers; planned home for the project-list row type, JSON shape, and table rendering.</td></tr>
+        <tr><td><code>internal/devspace/commands_test.go</code></td><td>Existing command-surface tests; planned coverage for bare <code>devspace project</code>, <code>--json</code>, help, and unchanged subcommands.</td></tr>
+        <tr><td><code>internal/devspace/ui_model.go</code></td><td>Contains dashboard status derivation that the project list should reuse or mirror for hydrated, placeholder, and missing labels.</td></tr>
+        <tr><td><code>internal/devspace/types.go</code></td><td>Defines <code>Project</code> and <code>ProjectState</code>, which are the selected JSON payload fields.</td></tr>
+        <tr><td><code>README.md</code></td><td>Documents supported commands and must explain <code>devspace project</code>, <code>devspace project --json</code>, and saved-metadata behavior.</td></tr>
+        <tr><td><code>docs/specs/10-spec-project-listing/10-proofs/</code></td><td>Planned proof location for CLI transcripts and verification evidence created during implementation.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Notes</h3>
+    <ul>
+      <li>Keep implementation in existing command/output files unless the diff becomes harder to read than a small helper file.</li>
+      <li>Use Go's built-in <code>testing</code> package and the existing <code>executeCommand</code> helper in <code>commands_test.go</code>.</li>
+      <li>Do not add dependencies; Cobra, existing table output helpers, and existing JSON helpers are enough.</li>
+      <li>Listing must read saved manifest/state only; <code>scan</code>, sync, hydrate, and apply remain explicit commands.</li>
+    </ul>
+  </section>
+
+  <section id="standards-evidence">
+    <h2>Standards Evidence Table</h2>
+    <table>
+      <thead>
+        <tr><th>Source File</th><th>Read Status</th><th>Standards Extracted</th><th>Conflicts</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>AGENTS.md</code></td><td>yes</td><td>Go CLI code belongs under <code>cmd/devspace</code> and <code>internal/devspace</code>; tests sit beside implementation; run <code>make verify</code>; local-first commands need explicit sync opt-in.</td><td>none</td></tr>
+        <tr><td><code>README.md</code></td><td>yes</td><td>Read commands with <code>--json</code> must emit clean JSON; <code>scan</code> refreshes manifest/state; sync commands do not copy source or secrets.</td><td>none</td></tr>
+        <tr><td><code>Makefile</code></td><td>yes</td><td><code>make verify</code> runs test, vet, lint, vulncheck, and build; <code>fmt</code> uses <code>gofmt</code> over <code>cmd</code> and <code>internal</code>.</td><td>none</td></tr>
+        <tr><td><code>.github/workflows/ci.yml</code></td><td>yes</td><td>CI runs <code>make verify</code> on PRs and pushes to <code>main</code>; Go version comes from <code>go.mod</code>; checkout persists no credentials.</td><td>none</td></tr>
+        <tr><td><code>CONTRIBUTING.md</code></td><td>not found</td><td>-</td><td>none</td></tr>
+        <tr><td><code>.github/pull_request_template.md</code></td><td>not found</td><td>-</td><td>none</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="tasks">
+    <h2>Tasks</h2>
+
+    <section class="parent-task" data-task-id="1.0" data-status="done">
+      <h3>1.0 Wire Bare <code>devspace project</code> As A Read-Only List Command</h3>
+
+      <div class="proof-artifacts">
+        <h4>1.0 Proof Artifact(s)</h4>
+        <ul>
+          <li>Test: <code>TestProjectCommandListsTrackedProjects</code> passes and demonstrates bare <code>devspace project</code> executes the list view while existing subcommands still work.</li>
+          <li>CLI: <code>devspace project</code> in an initialized sandbox workspace with no tracked projects prints a clear empty-state message.</li>
+          <li>CLI: <code>devspace project add apps/api && devspace project</code> demonstrates the command lists a tracked project without requiring a subcommand.</li>
+        </ul>
+      </div>
+
+      <div class="subtasks">
+        <h4>1.0 Tasks</h4>
+        <ul class="task-list">
+          <li class="task" data-task-id="1.1" data-status="done"><span class="task-label">1.1 Add a failing command test for bare <code>devspace project</code> on an empty initialized workspace, expecting a successful exit and clear empty-state text.</span></li>
+          <li class="task" data-task-id="1.2" data-status="done"><span class="task-label">1.2 Add a failing command test for bare <code>devspace project</code> after <code>project add apps/api</code>, expecting a listed project row containing <code>api</code> and <code>apps/api</code>.</span></li>
+          <li class="task" data-task-id="1.3" data-status="done"><span class="task-label">1.3 Update <code>newProjectCommand</code> so the command group has <code>Args: cobra.NoArgs</code> and a <code>RunE</code> path for listing when no subcommand is selected.</span></li>
+          <li class="task" data-task-id="1.4" data-status="done"><span class="task-label">1.4 Keep <code>add</code>, <code>hydrate</code>, <code>remove</code>, and <code>status</code> registered unchanged, and extend the existing project command test to prove <code>project status</code> still works.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="parent-task" data-task-id="2.0" data-status="done">
+      <h3>2.0 Render The Human Project Table From Saved Manifest And State</h3>
+
+      <div class="proof-artifacts">
+        <h4>2.0 Proof Artifact(s)</h4>
+        <ul>
+          <li>Test: formatter or command coverage passes for hydrated, placeholder, missing, dirty, branch, and env-file states.</li>
+          <li>CLI: <code>devspace project</code> output shows name, path, type, hydration status, dirty flag, branch, and env-file presence for sandbox projects.</li>
+          <li>Diff: manifest and state files before and after <code>devspace project</code> are unchanged, demonstrating read-only behavior.</li>
+        </ul>
+      </div>
+
+      <div class="subtasks">
+        <h4>2.0 Tasks</h4>
+        <ul class="task-list">
+          <li class="task" data-task-id="2.1" data-status="done"><span class="task-label">2.1 Add a small project-list row builder that loads config, manifest, and state, then sorts rows by relative path.</span></li>
+          <li class="task" data-task-id="2.2" data-status="done"><span class="task-label">2.2 Derive list status from saved <code>ProjectState</code> using the dashboard meanings: <code>missing</code>, <code>placeholder</code>, and <code>hydrated</code>.</span></li>
+          <li class="task" data-task-id="2.3" data-status="done"><span class="task-label">2.3 Render the default table with name, path, type, status, dirty, branch, and env columns using existing style/table helpers and <code>-</code> for absent values.</span></li>
+          <li class="task" data-task-id="2.4" data-status="done"><span class="task-label">2.4 Add a test fixture with hydrated, placeholder, missing, dirty, branch, and env states to prove each visible column value.</span></li>
+          <li class="task" data-task-id="2.5" data-status="done"><span class="task-label">2.5 Add a read-only behavior test that snapshots manifest and state files before and after <code>devspace project</code> and verifies they are unchanged.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="parent-task" data-task-id="3.0" data-status="done">
+      <h3>3.0 Add Stable <code>devspace project --json</code> Output</h3>
+
+      <div class="proof-artifacts">
+        <h4>3.0 Proof Artifact(s)</h4>
+        <ul>
+          <li>Test: <code>json.Unmarshal</code> on <code>devspace project --json</code> output passes and verifies each row contains a full <code>Project</code> and matching <code>ProjectState</code>.</li>
+          <li>CLI: <code>devspace project --json | python3 -m json.tool</code> demonstrates parseable JSON with no ANSI bytes.</li>
+          <li>Security scan: proof fixture output contains no plaintext env values, age identities, or hosted sync tokens.</li>
+        </ul>
+      </div>
+
+      <div class="subtasks">
+        <h4>3.0 Tasks</h4>
+        <ul class="task-list">
+          <li class="task" data-task-id="3.1" data-status="done"><span class="task-label">3.1 Define the JSON row shape in the output layer as <code>{ "project": Project, "state": ProjectState }</code>.</span></li>
+          <li class="task" data-task-id="3.2" data-status="done"><span class="task-label">3.2 Add a <code>--json</code> flag to the project command group and route it through <code>writePrettyJSON</code> using the same rows as the text table.</span></li>
+          <li class="task" data-task-id="3.3" data-status="done"><span class="task-label">3.3 Add a command test that unmarshals <code>devspace project --json</code> and asserts stable field names plus full <code>Project</code> and <code>ProjectState</code> payloads.</span></li>
+          <li class="task" data-task-id="3.4" data-status="done"><span class="task-label">3.4 Add a no-ANSI assertion for JSON output, following existing JSON command test patterns.</span></li>
+          <li class="task" data-task-id="3.5" data-status="done"><span class="task-label">3.5 Include a proof-time sensitive-term scan against generated JSON/transcripts for token, age identity, and plaintext env patterns.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="parent-task" data-task-id="4.0" data-status="done">
+      <h3>4.0 Document And Verify The New Project Listing Workflow</h3>
+
+      <div class="proof-artifacts">
+        <h4>4.0 Proof Artifact(s)</h4>
+        <ul>
+          <li>Diff: <code>README.md</code> documents <code>devspace project</code>, <code>devspace project --json</code>, and the saved-metadata behavior.</li>
+          <li>Test: project command help output demonstrates <code>--json</code> is discoverable without hiding existing subcommands.</li>
+          <li>Verification: <code>make verify</code> passes after implementation and documentation updates.</li>
+        </ul>
+      </div>
+
+      <div class="subtasks">
+        <h4>4.0 Tasks</h4>
+        <ul class="task-list">
+          <li class="task" data-task-id="4.1" data-status="done"><span class="task-label">4.1 Update the README command reference to add <code>devspace project</code> and <code>devspace project --json</code> before the existing project subcommand sections.</span></li>
+          <li class="task" data-task-id="4.2" data-status="done"><span class="task-label">4.2 Document that listing reads saved metadata and that users should run <code>devspace scan</code> when they want refreshed project state.</span></li>
+          <li class="task" data-task-id="4.3" data-status="done"><span class="task-label">4.3 Add or update a help test proving the project command group exposes <code>--json</code> and still lists <code>add</code>, <code>hydrate</code>, <code>remove</code>, and <code>status</code>.</span></li>
+          <li class="task" data-task-id="4.4" data-status="done"><span class="task-label">4.4 During implementation, create <code>docs/specs/10-spec-project-listing/10-proofs/</code> with sanitized CLI transcripts for text output, JSON output, read-only behavior, and <code>make verify</code>.</span></li>
+        </ul>
+      </div>
+    </section>
+  </section>
+</div>
+</body>
+</html>

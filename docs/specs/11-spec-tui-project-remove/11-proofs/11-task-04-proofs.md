@@ -26,6 +26,8 @@ docs/specs/11-spec-tui-project-remove/11-tui-project-remove.tape
 docs/specs/11-spec-tui-project-remove/11-tui-project-remove.gif
 ```
 
+![TUI project remove demo](../11-tui-project-remove.gif)
+
 ## Artifact: verification
 
 Commands and output are recorded after the final verification run.

@@ -11,7 +11,7 @@ $ go test ./internal/devspace -run 'TestReleaseCommandTreeContract|TestStatusCom
 ok  github.com/liatrio-forge/devdrop-capstone/internal/devspace
 ```
 
-The contract covers the 14-command maximum, group titles, canonical names, root `--version`, help examples, rejection of `workspace`, `tui`, `mount`, `version`, `project status`, and invalid `sync` paths, verbose redaction, project selection, JSON parsing, ANSI-free JSON, and invalid status flag/argument combinations.
+The contract covers the 14-command maximum, group titles, canonical names, root `--version`, focused help from bare resource groups, help examples, rejection of `workspace`, `tui`, `mount`, `version`, `project status`, and invalid `sync` paths, verbose redaction, project selection, JSON parsing, ANSI-free JSON, and invalid status flag/argument combinations.
 
 ## Grouped Root Help
 
@@ -50,6 +50,29 @@ FLAGS
 ```
 
 Visible product commands: 14. Visible `workspace`, `tui`, `mount`, and `version` commands: 0.
+
+## Consolidated Status Help
+
+This capture documents the three supported status views and their compatible flags.
+
+```text
+$ go run ./cmd/devspace status --help
+Show aggregate workspace health, saved workspace details with --verbose, or the saved state for one tracked project.
+
+USAGE
+  devspace status [project] [--flags]
+
+EXAMPLES
+  devspace status
+  devspace status --verbose
+  devspace status api --json
+
+FLAGS
+  --help
+  --json        Print machine-readable workspace or project status
+  --no-color    Disable styled output regardless of terminal capability
+  --verbose     Show saved workspace details
+```
 
 ## Isolated Status Workflow
 

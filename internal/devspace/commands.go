@@ -18,12 +18,13 @@ import (
 	"golang.org/x/term"
 )
 
-// Retain private constructors while later Spec 13 tasks migrate their behavior
-// to canonical command paths. They are intentionally not registered at root.
+// Retain private command and rendering paths while later Spec 13 tasks migrate
+// their behavior to canonical commands. They are intentionally unregistered.
 var (
 	_ = newWorkspaceCommand
 	_ = newMountCommand
 	_ = newTUICommand
+	_ = printProjectList
 )
 
 func NewRootCommand(version string) *cobra.Command {
@@ -776,24 +777,12 @@ func newMountCommand() *cobra.Command {
 }
 
 func newProjectCommand() *cobra.Command {
-	var jsonOut bool
 	cmd := &cobra.Command{
 		Use:   "project",
 		Short: "Manage projects",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			rows, err := buildProjectListRows()
-			if err != nil {
-				return err
-			}
-			if jsonOut {
-				return writePrettyJSON(cmd.OutOrStdout(), rows)
-			}
-			printProjectList(cmd.OutOrStdout(), rows)
-			return nil
-		},
 	}
-	cmd.Flags().BoolVar(&jsonOut, "json", false, "print machine-readable project list")
+	cmd.RunE = func(cmd *cobra.Command, args []string) error { return cmd.Help() }
 	cmd.AddCommand(&cobra.Command{
 		Use:   "add <relative-path>",
 		Short: "Track a project path",

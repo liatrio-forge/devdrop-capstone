@@ -181,6 +181,22 @@ func TestReleaseCommandTreeContract(t *testing.T) {
 	}
 }
 
+func TestReleaseCommandTreeContractProjectGroupShowsHelp(t *testing.T) {
+	t.Setenv(envHome, t.TempDir())
+	stdout, _, err := executeCommand(t, "test", "project")
+	if err != nil {
+		t.Fatalf("bare project error: %v", err)
+	}
+	for _, want := range []string{"Usage:", "Available Commands:", "devspace project [command]"} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("bare project help missing %q:\n%s", want, stdout)
+		}
+	}
+	if strings.Contains(stdout, "No tracked projects") {
+		t.Fatalf("bare project still executes implicit listing:\n%s", stdout)
+	}
+}
+
 func TestVersionFlagPrintsVersion(t *testing.T) {
 	stdout, _, err := executeCommand(t, "v1.2.3-test", "--version")
 	if err != nil {
@@ -374,13 +390,10 @@ func TestProjectAddAndStatusCommands(t *testing.T) {
 	}
 }
 
-func TestProjectCommandListsTrackedProjects(t *testing.T) {
+func TestProjectListRenderingShowsTrackedProjects(t *testing.T) {
 	initCommandWorkspace(t)
 
-	stdout, _, err := executeCommand(t, "test", "project")
-	if err != nil {
-		t.Fatalf("project list empty error: %v", err)
-	}
+	stdout := renderProjectList(t)
 	if !strings.Contains(stdout, "No tracked projects.") {
 		t.Fatalf("project list empty output = %q", stdout)
 	}
@@ -388,17 +401,14 @@ func TestProjectCommandListsTrackedProjects(t *testing.T) {
 	if _, _, err := executeCommand(t, "test", "project", "add", "apps/api"); err != nil {
 		t.Fatalf("project add error: %v", err)
 	}
-	stdout, _, err = executeCommand(t, "test", "project")
-	if err != nil {
-		t.Fatalf("project list error: %v", err)
-	}
+	stdout = renderProjectList(t)
 	for _, want := range []string{"api", "apps/api", ProjectTypeLocal, "hydrated"} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("project list output missing %q:\n%s", want, stdout)
 		}
 	}
 
-	stdout, _, err = executeCommand(t, "test", "status", "api")
+	stdout, _, err := executeCommand(t, "test", "status", "api")
 	if err != nil {
 		t.Fatalf("status api after list wiring error: %v", err)
 	}
@@ -407,7 +417,7 @@ func TestProjectCommandListsTrackedProjects(t *testing.T) {
 	}
 }
 
-func TestProjectCommandShowsSavedProjectStateWithoutMutating(t *testing.T) {
+func TestProjectListRenderingShowsSavedStateWithoutMutating(t *testing.T) {
 	workspace := initCommandWorkspace(t)
 	manifest := Manifest{
 		Version:       ManifestVersion,
@@ -439,10 +449,7 @@ func TestProjectCommandShowsSavedProjectStateWithoutMutating(t *testing.T) {
 	}
 	beforeManifest, beforeState := readProjectListFiles(t, workspace)
 
-	stdout, _, err := executeCommand(t, "test", "project")
-	if err != nil {
-		t.Fatalf("project list error: %v", err)
-	}
+	stdout := renderProjectList(t)
 	for _, want := range []string{"apps/api", "placeholder", "main", "docs/site", "missing", "services/worker", "hydrated", "yes"} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("project list output missing %q:\n%s", want, stdout)
@@ -457,7 +464,7 @@ func TestProjectCommandShowsSavedProjectStateWithoutMutating(t *testing.T) {
 	}
 }
 
-func TestProjectCommandJSONHasStableFieldNames(t *testing.T) {
+func TestProjectListJSONHasStableFieldNames(t *testing.T) {
 	workspace := initCommandWorkspace(t)
 	manifest := Manifest{
 		Version:       ManifestVersion,
@@ -476,22 +483,27 @@ func TestProjectCommandJSONHasStableFieldNames(t *testing.T) {
 		t.Fatalf("SaveState: %v", err)
 	}
 
-	stdout, _, err := executeCommand(t, "test", "project", "--json")
+	rows, err := buildProjectListRows()
 	if err != nil {
-		t.Fatalf("project --json error: %v", err)
+		t.Fatalf("buildProjectListRows: %v", err)
 	}
-	var rows []struct {
+	var out bytes.Buffer
+	if err := writePrettyJSON(&out, rows); err != nil {
+		t.Fatalf("write project list JSON: %v", err)
+	}
+	stdout := out.String()
+	var decodedRows []struct {
 		Project Project      `json:"project"`
 		State   ProjectState `json:"state"`
 	}
-	if err := json.Unmarshal([]byte(stdout), &rows); err != nil {
+	if err := json.Unmarshal([]byte(stdout), &decodedRows); err != nil {
 		t.Fatalf("project --json did not parse: %v\n%s", err, stdout)
 	}
-	if len(rows) != 1 {
-		t.Fatalf("rows = %+v, want one row", rows)
+	if len(decodedRows) != 1 {
+		t.Fatalf("rows = %+v, want one row", decodedRows)
 	}
-	if rows[0].Project.Path != "apps/api" || !rows[0].State.Placeholder {
-		t.Fatalf("row = %+v, want full project and matching state", rows[0])
+	if decodedRows[0].Project.Path != "apps/api" || !decodedRows[0].State.Placeholder {
+		t.Fatalf("row = %+v, want full project and matching state", decodedRows[0])
 	}
 	for _, want := range []string{`"project"`, `"state"`, `"hydrateMode"`, `"placeholder"`} {
 		if !strings.Contains(stdout, want) {
@@ -503,15 +515,18 @@ func TestProjectCommandJSONHasStableFieldNames(t *testing.T) {
 	}
 }
 
-func TestProjectHelpDocumentsJSONFlag(t *testing.T) {
+func TestProjectHelpShowsResourceActions(t *testing.T) {
 	stdout, _, err := executeCommand(t, "test", "project", "--help")
 	if err != nil {
 		t.Fatalf("project --help error: %v", err)
 	}
-	for _, want := range []string{"--json", "add", "hydrate", "remove", "update"} {
+	for _, want := range []string{"add", "hydrate", "remove", "update"} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("project --help missing %q:\n%s", want, stdout)
 		}
+	}
+	if strings.Contains(stdout, "--json") {
+		t.Fatalf("project group help exposes action-specific --json flag:\n%s", stdout)
 	}
 }
 
@@ -546,6 +561,18 @@ func readProjectListFiles(t *testing.T, workspace string) (string, string) {
 		t.Fatalf("read state: %v", err)
 	}
 	return string(manifest), string(state)
+}
+
+func renderProjectList(t *testing.T) string {
+	t.Helper()
+	rows, err := buildProjectListRows()
+	if err != nil {
+		t.Fatalf("buildProjectListRows: %v", err)
+	}
+	var out bytes.Buffer
+	configureStyles(&out, false)
+	printProjectList(&out, rows)
+	return out.String()
 }
 
 func TestPlanAndApplyCommandsRoundTrip(t *testing.T) {

@@ -148,7 +148,7 @@
 - [ ] 3.7 Update mount diagnostics, logs, architecture comments, and tests to reference `experimental mount` and `project update` while preserving FUSE integration behavior.
 - [ ] 3.8 Run targeted env/setup/hosted/mount tests and write `13-proofs/13-task-03-secondary-command-workflows.txt` with masked values, file-mode evidence, help, and preview output.
 
-### [~] 4.0 Make `devspace ui` the only release UI entry point and bundle the companion in archives
+### [x] 4.0 Make `devspace ui` the only release UI entry point and bundle the companion in archives
 
 #### 4.0 Proof Artifact(s)
 
